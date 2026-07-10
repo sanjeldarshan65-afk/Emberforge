@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="warm" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#211711"/><stop offset="100%" stop-color="#0a0806"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="18%" stop-color="#ffa04d"/><stop offset="42%" stop-color="#ff7518"/><stop offset="72%" stop-color="#d1490a"/><stop offset="100%" stop-color="#7f2c04"/></linearGradient>
+    <linearGradient id="core"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff4d6"/><stop offset="30%" stop-color="#ffdf86"/><stop offset="60%" stop-color="#f3b23e"/><stop offset="100%" stop-color="#de7f16"/></linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="#0a0806"/>
+  <rect width="512" height="512" fill="url(#warm)"/>
+  <path d="M256.00 71.68 C280.58 106.79 305.15 151.55 318.32 211.24 C333.24 251.61 340.26 289.35 325.34 332.36 C312.17 374.49 291.11 417.50 256.00 440.32 C220.89 417.50 199.83 374.49 186.66 332.36 C171.74 289.35 178.76 251.61 193.68 211.24 C206.85 151.55 231.42 106.79 256.00 71.68 Z" fill="#ff7518" opacity="0.55" filter="url(#glow)"/>
+  <path d="M256.00 71.68 C280.58 106.79 305.15 151.55 318.32 211.24 C333.24 251.61 340.26 289.35 325.34 332.36 C312.17 374.49 291.11 417.50 256.00 440.32 C220.89 417.50 199.83 374.49 186.66 332.36 C171.74 289.35 178.76 251.61 193.68 211.24 C206.85 151.55 231.42 106.79 256.00 71.68 Z" fill="url(#flame)"/>
+  <path d="M256.00 177.33 C269.52 196.64 283.03 221.26 290.27 254.09 C298.48 276.30 302.34 297.06 294.14 320.71 C286.90 343.88 275.31 367.54 256.00 380.09 C236.69 367.54 225.10 343.88 217.86 320.71 C209.66 297.06 213.52 276.30 221.73 254.09 C228.97 221.26 242.48 196.64 256.00 177.33 Z"  fill="url(#core)"/>
+  <path d="M256.00 231.34 C263.86 242.57 271.73 256.90 275.94 275.99 C280.72 288.91 282.96 300.99 278.19 314.75 C273.98 328.24 267.23 342.00 256.00 349.30 C244.77 342.00 238.02 328.24 233.81 314.75 C229.04 300.99 231.28 288.91 236.06 275.99 C240.27 256.90 248.14 242.57 256.00 231.34 Z" fill="#fff4d6" opacity="0.9" filter="url(#glow)"/>
+</svg>

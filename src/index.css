@@ -1,0 +1,423 @@
+/* ==========================================================================
+   EMBERFORGE — global stylesheet
+   Tailwind CSS v4 · FromSoft / Dark Souls RPG theme
+   In v4 there is NO tailwind.config.js — all theme tokens live here.
+
+   Quick reference (utilities this file generates):
+     Colors ....... bg-void, bg-abyss, bg-charcoal, bg-iron, border-ash,
+                    text-bone, text-bone-dim, text-souls, text-ember,
+                    text-blood-bright, text-humanity, text-verdant ...
+     Fonts ........ font-display (Cinzel), font-body (Cormorant), font-ui (Inter)
+     Shadows ...... shadow-ember-glow, shadow-souls-glow, shadow-panel
+     Animations ... animate-flicker, animate-ember-pulse, animate-rise,
+                    animate-fade-in
+     Components ... .panel, .panel-ornate, .btn-ember, .btn-hollow,
+                    .input-dark, .divider-ornate, .stat-souls,
+                    .death-banner, .text-glow-ember
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+/* --------------------------------------------------------------------------
+   THEME TOKENS  (this block replaces tailwind.config.js)
+   -------------------------------------------------------------------------- */
+@theme {
+  /* -- palette: ash, ember, souls, bone -- */
+  --color-void: #0a0806;          /* deepest background, warm near-black   */
+  --color-abyss: #100d0a;         /* app background                        */
+  --color-charcoal: #17130f;      /* card / surface                        */
+  --color-iron: #221c15;          /* raised surface                        */
+  --color-ash: #2e271e;           /* borders, dividers                     */
+  --color-stone: #4d4335;         /* strong borders, disabled text         */
+
+  --color-ember: #ff7518;         /* primary — bonfire flame               */
+  --color-ember-bright: #ffa04d;  /* hover / glow                          */
+  --color-ember-deep: #b34700;    /* pressed / gradients                   */
+
+  --color-souls: #e6c35c;         /* gold — XP, currency, emphasis         */
+  --color-souls-dim: #9c7f35;     /* muted gold, ornament lines            */
+
+  --color-bone: #e9e1cb;          /* primary text — aged parchment         */
+  --color-bone-dim: #a89e86;      /* secondary text                        */
+  --color-faded: #6e6553;         /* tertiary / placeholder                */
+
+  --color-blood: #7f1d1d;         /* danger surface                        */
+  --color-blood-bright: #dc2626;  /* YOU DIED red                          */
+  --color-estus: #ffb347;         /* healing / warm success                */
+  --color-humanity: #9db8c9;      /* cool info accent — humanity glow      */
+  --color-verdant: #6b8f5e;       /* muted moss green — success            */
+
+  /* -- typography -- */
+  --font-display: "Cinzel", "Times New Roman", serif;          /* titles, buttons, stats */
+  --font-body: "Cormorant Garamond", Georgia, serif;           /* prose, descriptions    */
+  --font-ui: "Inter", system-ui, sans-serif;                   /* inputs, dense data     */
+
+  /* -- glows & shadows -- */
+  --shadow-ember-glow: 0 0 18px rgb(255 117 24 / 0.35), 0 0 45px rgb(255 117 24 / 0.12);
+  --shadow-souls-glow: 0 0 14px rgb(230 195 92 / 0.30);
+  --shadow-panel: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 10px 30px rgb(0 0 0 / 0.55);
+
+  /* -- animations -- */
+  --animate-flicker: flicker 2.8s ease-in-out infinite;
+  --animate-ember-pulse: ember-pulse 3.2s ease-in-out infinite;
+  --animate-rise: rise 0.9s ease-out forwards;
+  --animate-fade-in: fade-in 0.5s ease-out both;
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    45%      { opacity: 0.85; }
+    55%      { opacity: 0.95; }
+    70%      { opacity: 0.80; }
+  }
+  @keyframes ember-pulse {
+    0%, 100% { box-shadow: 0 0 12px rgb(255 117 24 / 0.25); }
+    50%      { box-shadow: 0 0 26px rgb(255 117 24 / 0.55), 0 0 60px rgb(255 117 24 / 0.18); }
+  }
+  @keyframes rise {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-2.5rem); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   BASE
+   -------------------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--color-bone);
+    font-family: var(--font-body);
+    font-size: 1.0625rem; /* Cormorant runs small — nudge the base up */
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--color-void);
+    background-image:
+      /* faint bonfire warmth bleeding in from the top */
+      radial-gradient(1100px 700px at 50% -12%, rgb(255 117 24 / 0.06), transparent 60%),
+      /* whisper of gold in the lower corner */
+      radial-gradient(900px 600px at 85% 110%, rgb(230 195 92 / 0.04), transparent 55%),
+      linear-gradient(180deg, var(--color-abyss) 0%, var(--color-void) 100%);
+    background-attachment: fixed;
+  }
+
+  /* film grain — the faint tooth of real paper and old screens */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* cinematic vignette over everything (clicks pass through) */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse 120% 90% at 50% 45%,
+      transparent 60%,
+      rgb(0 0 0 / 0.45) 100%
+    );
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.06em;
+    color: var(--color-bone);
+  }
+
+  ::selection {
+    background: var(--color-ember-deep);
+    color: var(--color-bone);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-souls);
+    outline-offset: 2px;
+  }
+
+  /* native-app scroll: fully functional, fully invisible */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* feel like a compiled app, not a website */
+  button,
+  nav,
+  .divider-ornate,
+  .stat-souls,
+  .death-banner,
+  .btn-ember,
+  .btn-hollow {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   COMPONENTS — RPG interface pieces
+   -------------------------------------------------------------------------- */
+@layer components {
+
+  /* --- Panels: sharp-cornered stone slabs, not rounded cards --- */
+  .panel {
+    background: linear-gradient(180deg, var(--color-iron), var(--color-charcoal));
+    border: 1px solid var(--color-ash);
+    border-radius: 2px;
+    box-shadow: var(--shadow-panel);
+    transition: border-color 0.2s ease;
+  }
+  .panel:hover {
+    border-color: var(--color-stone);
+  }
+
+  /* --- Ornate panel: gold corner brackets, opposite corners --- */
+  .panel-ornate {
+    position: relative;
+  }
+  .panel-ornate::before,
+  .panel-ornate::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+  .panel-ornate::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid var(--color-souls-dim);
+    border-left: 1px solid var(--color-souls-dim);
+  }
+  .panel-ornate::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1px solid var(--color-souls-dim);
+    border-right: 1px solid var(--color-souls-dim);
+  }
+
+  /* --- Primary button: forged in flame --- */
+  .btn-ember {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #180b02;
+    background: linear-gradient(180deg, var(--color-ember-bright), var(--color-ember) 45%, var(--color-ember-deep));
+    border: 1px solid rgb(255 160 77 / 0.5);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .btn-ember:hover {
+    filter: brightness(1.1);
+    box-shadow: var(--shadow-ember-glow);
+  }
+  .btn-ember:active {
+    transform: translateY(1px);
+  }
+  .btn-ember:disabled {
+    filter: grayscale(0.7) brightness(0.6);
+    cursor: not-allowed;
+  }
+
+  /* --- Secondary button: hollow until kindled --- */
+  .btn-hollow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-bone-dim);
+    background: transparent;
+    border: 1px solid var(--color-stone);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-hollow:hover {
+    color: var(--color-souls);
+    border-color: var(--color-souls-dim);
+    box-shadow: var(--shadow-souls-glow);
+  }
+
+  /* --- Inputs: dark iron with a gold focus seam --- */
+  .input-dark {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-family: var(--font-ui);
+    font-size: 1rem; /* 16px minimum stops iOS auto-zoom on focus */
+    color: var(--color-bone);
+    background: var(--color-abyss);
+    border: 1px solid var(--color-ash);
+    border-radius: 2px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .input-dark::placeholder {
+    color: var(--color-faded);
+  }
+  .input-dark:focus {
+    outline: none;
+    border-color: var(--color-souls-dim);
+    box-shadow: var(--shadow-souls-glow);
+  }
+
+  /* --- Ornate divider: <div class="divider-ornate">Souls Ledger</div>
+         (or just "◆" for a plain separator) --- */
+  .divider-ornate {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-souls-dim);
+  }
+  .divider-ornate::before,
+  .divider-ornate::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+  }
+  .divider-ornate::before {
+    background: linear-gradient(to right, transparent, var(--color-stone));
+  }
+  .divider-ornate::after {
+    background: linear-gradient(to left, transparent, var(--color-stone));
+  }
+
+  /* --- Big gold numbers: souls counters, PRs, streaks --- */
+  .stat-souls {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-souls);
+    text-shadow: 0 0 12px rgb(230 195 92 / 0.35);
+  }
+
+  /* --- YOU DIED banner: missed workouts, failed boss fights --- */
+  .death-banner {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 600;
+    letter-spacing: 0.4em;
+    text-indent: 0.4em; /* recenters tracked-out text */
+    color: var(--color-blood-bright);
+    text-shadow: 0 0 30px rgb(220 38 38 / 0.5);
+    background: linear-gradient(
+      180deg,
+      transparent,
+      rgb(0 0 0 / 0.85) 35%,
+      rgb(0 0 0 / 0.85) 65%,
+      transparent
+    );
+  }
+
+  /* --- Flame-lit text --- */
+  .text-glow-ember {
+    color: var(--color-ember-bright);
+    text-shadow: 0 0 14px rgb(255 117 24 / 0.5);
+  }
+}
+
+/* ==========================================================================
+   HOLLOWED MODE — the fire fades. Gold and ember give way to ash, bone,
+   and cold spectral blue. The class rides on <html>; because every token is
+   a CSS variable, overriding them here re-skins the entire app at once.
+   ========================================================================== */
+html.hollowed {
+  /* ember → cold spectral blue */
+  --color-ember: #6da8cf;
+  --color-ember-bright: #a6cfe6;
+  --color-ember-deep: #35576f;
+  /* gold souls → pale ash-silver */
+  --color-souls: #c3cbd2;
+  --color-souls-dim: #7c8790;
+  --color-estus: #9fc6dc;
+  /* surfaces cool and desaturate toward stone */
+  --color-void: #08090b;
+  --color-abyss: #0e1013;
+  --color-charcoal: #15181c;
+  --color-iron: #1e2329;
+  --color-ash: #2b313a;
+  --color-stone: #47505c;
+  --color-bone: #dfe4ea;
+  --color-bone-dim: #98a1ab;
+  --color-faded: #5c646f;
+  /* glows go spectral */
+  --shadow-ember-glow: 0 0 18px rgb(109 168 207 / 0.35), 0 0 45px rgb(109 168 207 / 0.12);
+  --shadow-souls-glow: 0 0 14px rgb(166 207 230 / 0.28);
+}
+
+/* cool the ambient bonfire wash behind everything when hollowed */
+html.hollowed body {
+  background-image:
+    radial-gradient(1100px 700px at 50% -12%, rgb(109 168 207 / 0.06), transparent 60%),
+    radial-gradient(900px 600px at 85% 110%, rgb(157 184 201 / 0.04), transparent 55%),
+    linear-gradient(180deg, var(--color-abyss) 0%, var(--color-void) 100%);
+}
+html.hollowed body::before { opacity: 0.06; } /* a colder, grainier world */
+
+/* smooth cross-app crossfade — armed only during a toggle, so hovers stay snappy */
+html.theme-shift,
+html.theme-shift *,
+html.theme-shift *::before,
+html.theme-shift *::after {
+  transition:
+    background-color 0.8s ease, color 0.8s ease, border-color 0.8s ease,
+    fill 0.8s ease, stroke 0.8s ease, box-shadow 0.8s ease, opacity 0.8s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-shift, html.theme-shift * { transition-duration: 0.01ms !important; }
+}
