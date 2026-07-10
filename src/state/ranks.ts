@@ -10,17 +10,18 @@ export type Rank = {
   minLevel: number
   glyph: string
   color: string // CSS custom-property reference, matches the theme palette
+  hex: string // raw hex twin of `color` — for share-card capture, where var() is unsafe
 }
 
 export const RANKS: Rank[] = [
-  { key: 'unkindled', name: 'Unkindled', minLevel: 1, glyph: '◇', color: 'var(--color-faded)' },
-  { key: 'ashen', name: 'Ashen', minLevel: 5, glyph: '◆', color: 'var(--color-bone-dim)' },
-  { key: 'ember-touched', name: 'Ember-Touched', minLevel: 10, glyph: '◈', color: 'var(--color-ember)' },
-  { key: 'cinderborn', name: 'Cinderborn', minLevel: 15, glyph: '❖', color: 'var(--color-ember-bright)' },
-  { key: 'forgeborn', name: 'Forgeborn', minLevel: 20, glyph: '✦', color: 'var(--color-souls-dim)' },
-  { key: 'emberlord', name: 'Emberlord', minLevel: 30, glyph: '✧', color: 'var(--color-souls)' },
-  { key: 'titan-of-the-forge', name: 'Titan of the Forge', minLevel: 40, glyph: '☄', color: 'var(--color-estus)' },
-  { key: 'undying-flame', name: 'Undying Flame', minLevel: 60, glyph: '☀', color: 'var(--color-blood-bright)' },
+  { key: 'unkindled', name: 'Unkindled', minLevel: 1, glyph: '◇', color: 'var(--color-faded)', hex: '#6e6553' },
+  { key: 'ashen', name: 'Ashen', minLevel: 5, glyph: '◆', color: 'var(--color-bone-dim)', hex: '#a89e86' },
+  { key: 'ember-touched', name: 'Ember-Touched', minLevel: 10, glyph: '◈', color: 'var(--color-ember)', hex: '#ff7518' },
+  { key: 'cinderborn', name: 'Cinderborn', minLevel: 15, glyph: '❖', color: 'var(--color-ember-bright)', hex: '#ffa04d' },
+  { key: 'forgeborn', name: 'Forgeborn', minLevel: 20, glyph: '✦', color: 'var(--color-souls-dim)', hex: '#9c7f35' },
+  { key: 'emberlord', name: 'Emberlord', minLevel: 30, glyph: '✧', color: 'var(--color-souls)', hex: '#e6c35c' },
+  { key: 'titan-of-the-forge', name: 'Titan of the Forge', minLevel: 40, glyph: '☄', color: 'var(--color-estus)', hex: '#ffb347' },
+  { key: 'undying-flame', name: 'Undying Flame', minLevel: 60, glyph: '☀', color: 'var(--color-blood-bright)', hex: '#dc2626' },
 ]
 
 /** the highest rank whose threshold the given level has reached */

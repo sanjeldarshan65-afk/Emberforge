@@ -12,6 +12,7 @@ import { useGame, levelInfo, statusEffects } from './state/store'
 import { rankForLevel } from './state/ranks'
 import { pick, EPIGRAPHS } from './ui/flavor'
 import { snapshotBackup } from './state/backup'
+import { runReminderCheck } from './pwa/reminders'
 import { APP_VERSION } from './version'
 
 /* Tab views are code-split — each loads as its own chunk only when first
@@ -204,6 +205,17 @@ function Hub() {
     applyStatusEffects()
     snapshotBackup(APP_VERSION)
   }, [applyStatusEffects])
+
+  /* Ember Reminders — opt-in local notifications, checked on arrival and
+     every half hour while the Sanctum stays open (no backend, no true push) */
+  const remindersOn = useGame((s) => s.settings.reminders)
+  useEffect(() => {
+    if (!remindersOn) return
+    const check = () => runReminderCheck(useGame.getState())
+    check()
+    const t = window.setInterval(check, 30 * 60 * 1000)
+    return () => window.clearInterval(t)
+  }, [remindersOn])
 
   /* an empty-widget CTA (or anything) can request a tab switch */
   useEffect(() => {

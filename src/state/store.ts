@@ -66,6 +66,7 @@ export type Settings = {
   taperGoal: number       // shoulder:waist target
   hollowed: boolean       // Hollowed Mode — spectral ash/bone palette
   cloudEndpoint: string   // opt-in encrypted cloud-sync URL (empty = off, the default)
+  reminders: boolean      // Ember Reminders — local notifications while the app is open
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -79,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   taperGoal: 1.618,
   hollowed: false,
   cloudEndpoint: '',
+  reminders: false,
 }
 
 export type BattleReward = {

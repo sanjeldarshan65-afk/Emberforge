@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, levelInfo } from '../state/store'
 import { RANKS, rankForLevel, nextRank, rankProgress } from '../state/ranks'
 import { useModalDismiss } from '../ui/useModalDismiss'
+import RankScroll from './RankScroll'
+import type { RankScrollData } from './RankScroll'
 
 /* ================================================================
    THE RANKS — a named ladder laid over the numeric level. Climbing
@@ -16,6 +19,7 @@ export default function RanksLadder({ open, onClose }: { open: boolean; onClose:
   const current = rankForLevel(level)
   const next = nextRank(level)
   const pct = rankProgress(level) * 100
+  const [scroll, setScroll] = useState<RankScrollData | null>(null)
 
   return (
     <AnimatePresence>
@@ -92,6 +96,13 @@ export default function RanksLadder({ open, onClose }: { open: boolean; onClose:
                   the summit — no rank stands above thee
                 </div>
               )}
+
+              <button
+                onClick={() => setScroll({ rank: current, level })}
+                className="mt-4 w-full min-h-10 border border-souls-dim/40 text-souls-dim hover:text-souls hover:border-souls-dim font-display text-[0.55rem] tracking-[0.25em] uppercase transition-colors"
+              >
+                Inscribe a Rank Scroll &middot; Share
+              </button>
             </div>
 
             {/* the ladder */}
@@ -144,6 +155,8 @@ export default function RanksLadder({ open, onClose }: { open: boolean; onClose:
               })}
             </div>
           </motion.div>
+
+          <RankScroll data={scroll} onClose={() => setScroll(null)} />
         </motion.div>
       )}
     </AnimatePresence>

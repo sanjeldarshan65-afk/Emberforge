@@ -14,6 +14,7 @@ import {
   needsExportReminder,
 } from '../state/backup'
 import { encryptText, decryptText, isEncryptedBackup } from '../state/crypto'
+import { remindersSupported, remindersPermitted, requestReminderPermission } from '../pwa/reminders'
 import { pushToCloud, pullFromCloud } from '../state/cloudSync'
 import { buildDemoState } from '../state/demoData'
 import type { Macros } from '../state/store'
@@ -333,6 +334,33 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
 
               <Row label="Hollowed Mode" hint="let the fire fade — ash, bone & cold spectral blue">
                 <Toggle on={settings.hollowed} onChange={(v) => updateSettings({ hollowed: v })} />
+              </Row>
+
+              <Row
+                label="Ember Reminders"
+                hint={
+                  remindersSupported()
+                    ? 'a nudge when thy streak gutters or a reward waits — while the app is open'
+                    : 'this vessel cannot bear notifications — install to the home screen and return'
+                }
+              >
+                <Toggle
+                  on={settings.reminders && remindersPermitted()}
+                  onChange={async (v) => {
+                    if (!v) {
+                      updateSettings({ reminders: false })
+                      return
+                    }
+                    const granted = await requestReminderPermission()
+                    updateSettings({ reminders: granted })
+                    toast(
+                      granted
+                        ? 'The embers will call to thee'
+                        : 'The realm refused — grant notifications in thy browser settings',
+                      granted ? 'souls' : 'blood'
+                    )
+                  }}
+                />
               </Row>
 
               {/* ============ ESTUS RATIONS ============ */}
