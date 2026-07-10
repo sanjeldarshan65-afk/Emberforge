@@ -436,11 +436,10 @@ export default function CombatLog() {
       xpAfter: xpBefore + totalXp,
       share,
     })
-    toast(`+ ${totalSouls.toLocaleString()} Souls Gained`, 'souls')
-    toast(`+ ${totalXp} XP`, 'souls')
-    if (anyPR) toast('Record Shattered', 'ember')
-    if (anyLevel) toast(`Level Up — thou art Lv ${newLevel}`, 'ember')
-    /* Every lift is now recorded. Claim Rewards / Share ends the session cleanly via endAndExit. */
+    /* No toasts here — the Victory Overlay already shows souls, XP, records and
+       level-ups; firing them as toasts too buried the overlay under a stack of
+       duplicates. Every lift is now recorded; Claim Rewards / Share ends the
+       session cleanly via endAndExit. */
   }
 
   /* Claim Rewards / Share both terminate the session and return to the gate */

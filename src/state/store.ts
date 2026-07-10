@@ -200,6 +200,7 @@ type GameState = {
   inventory: OwnedItem[]
   claimedQuests: string[]
   claimedSeasons: string[]
+  claimedDailies: string[] // day-keys (YYYY-MM-DD) whose Daily Ember was claimed
   bossesDefeated: string[]
   unlockedNodes: string[]
   ascensionLevel: number
@@ -217,6 +218,7 @@ type GameState = {
   buyItem: (id: string, price: number) => boolean
   claimQuest: (id: string, souls: number, itemReward?: string) => void
   claimSeason: (id: string, souls: number) => void
+  claimDaily: (dayKey: string, souls: number) => void
   defeatBoss: (id: string, souls: number, trophy?: string) => void
   unlockNode: (id: string, cost: number) => boolean
   ascend: () => boolean
@@ -262,6 +264,7 @@ export const useGame = create<GameState>()(
       ],
       claimedQuests: [],
       claimedSeasons: [],
+      claimedDailies: [],
       bossesDefeated: [],
       unlockedNodes: [],
       ascensionLevel: 0,
@@ -468,6 +471,16 @@ export const useGame = create<GameState>()(
         const s = get()
         if (s.claimedSeasons.includes(id)) return
         set((st) => ({ souls: st.souls + souls, claimedSeasons: [...st.claimedSeasons, id] }))
+      },
+
+      /* The Daily Ember — claim today's small trial, once per day-key */
+      claimDaily: (dayKey, souls) => {
+        const s = get()
+        if (s.claimedDailies.includes(dayKey)) return
+        set((st) => ({
+          souls: st.souls + souls,
+          claimedDailies: [...st.claimedDailies, dayKey].slice(-60),
+        }))
       },
 
       /* Boss Encounters — fell a challenge lift: bonus souls + trophy via the loot path, once */

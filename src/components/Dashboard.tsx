@@ -16,6 +16,7 @@ import { QUESTS } from '../state/quests'
 import { rankForLevel } from '../state/ranks'
 import TrialsHero from './TrialsHero'
 import SeasonalTrial from './SeasonalTrial'
+import DailyEmberCard from './DailyEmberCard'
 
 /* heavy modals — code-split so their chunks load on first open, not with the Sanctum */
 const TheHoard = lazy(() => import('./TheHoard'))
@@ -123,16 +124,20 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* ============ RITE OF THE SEASON ============ */}
+      {/* ============ DAILY EMBER ============ */}
       <motion.section variants={fadeUp}>
-        <div className="divider-ornate mb-4">Rite of the Season</div>
-        <SeasonalTrial />
+        <DailyEmberCard />
       </motion.section>
 
       {/* ============ TRIALS ============ */}
       <motion.section variants={fadeUp}>
         <div className="divider-ornate mb-4">Trials</div>
         <TrialsHero onOpenAll={() => setCovenantsOpen(true)} />
+      </motion.section>
+
+      {/* ============ RITE OF THE SEASON ============ */}
+      <motion.section variants={fadeUp}>
+        <SeasonalTrial />
       </motion.section>
 
       {/* ============ STATUS EFFECTS ============ */}

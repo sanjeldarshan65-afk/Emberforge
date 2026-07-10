@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { levelInfo } from '../state/store'
 import type { BattleReward } from '../state/store'
+import { rankForLevel } from '../state/ranks'
 import type { ScrollData } from './VictoryScroll'
 import { getItem } from '../state/items'
 import type { Rarity } from '../state/items'
@@ -56,6 +57,9 @@ function VictoryInner({
   const before = levelInfo(xpBefore)
   const after = levelInfo(xpAfter)
   const leveledUp = reward.leveledUp
+  /* a level-up may also cross a rank threshold — that deserves its own flare */
+  const rankAfter = rankForLevel(after.level)
+  const rankedUp = leveledUp && rankForLevel(before.level).key !== rankAfter.key
   const startPct = leveledUp ? 0 : asPct(before.into, before.needed)
   const endPct = asPct(after.into, after.needed)
   const banner = reward.prBroken ? 'THE IRON YIELDS' : 'GREAT ENEMY FELLED'
@@ -141,6 +145,30 @@ function VictoryInner({
           <Spoil label="Souls Earned" value={`+${reward.souls.toLocaleString()}`} />
           <Spoil label={`Tonnage · ${units}`} value={tonnage.toLocaleString()} />
         </div>
+
+        {rankedUp && showLevel && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0, transition: { delay: 0.45, duration: 0.5 } }}
+            className="inline-flex items-center gap-2 px-4 py-2 border bg-iron mt-1 mb-2"
+            style={{ borderColor: rankAfter.color, boxShadow: `0 0 16px ${rankAfter.color}55` }}
+          >
+            <span className="text-lg leading-none" style={{ color: rankAfter.color }}>
+              {rankAfter.glyph}
+            </span>
+            <span className="text-left">
+              <span className="block font-display text-[0.55rem] tracking-[0.25em] uppercase text-bone-dim">
+                Rank Attained
+              </span>
+              <span
+                className="block font-display text-sm tracking-[0.15em] uppercase"
+                style={{ color: rankAfter.color }}
+              >
+                {rankAfter.name}
+              </span>
+            </span>
+          </motion.div>
+        )}
 
         {reward.ascended && (
           <div className="font-display text-souls text-[0.6rem] tracking-[0.25em] uppercase mt-3 animate-flicker">
