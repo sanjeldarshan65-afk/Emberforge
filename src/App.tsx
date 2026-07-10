@@ -195,7 +195,9 @@ function Hub() {
   const battles = useGame((s) => s.battles)
   const { level, into, needed } = levelInfo(xp)
   const rank = rankForLevel(level)
-  const { streak } = statusEffects(battles)
+  const { streak, daysSinceLast } = statusEffects(battles)
+  /* the streak lives on yesterday's fire alone — idle today and it dies */
+  const streakAtRisk = streak > 0 && daysSinceLast === 1
 
   /* settle the curse's debt + take an automatic rolling backup once per visit */
   useEffect(() => {
@@ -270,11 +272,30 @@ function Hub() {
           </span>
 
           <span
-            className={`inline-flex items-center gap-1 ${streak > 0 ? 'text-ember-bright' : 'text-faded'}`}
-            title={streak > 0 ? `${streak}-day streak` : 'no streak yet — return tomorrow to kindle one'}
+            className={`inline-flex items-center gap-1 ${
+              streakAtRisk
+                ? 'text-estus'
+                : streak > 0
+                  ? 'text-ember-bright'
+                  : 'text-faded'
+            }`}
+            title={
+              streakAtRisk
+                ? `${streak}-day streak — the fire gutters; train today to keep it`
+                : streak > 0
+                  ? `${streak}-day streak`
+                  : 'no streak yet — a battle today kindles one'
+            }
           >
-            <StreakFlameIcon />
+            <span className={streakAtRisk ? 'animate-flicker' : undefined}>
+              <StreakFlameIcon />
+            </span>
             <span className="font-semibold">{streak}</span>
+            {streakAtRisk && (
+              <span className="font-ui text-[0.55rem] tracking-[0.15em] uppercase text-estus/80 ml-0.5">
+                gutters
+              </span>
+            )}
           </span>
 
           <span className="inline-flex items-center gap-1 text-souls">
