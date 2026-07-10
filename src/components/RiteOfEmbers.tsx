@@ -4,7 +4,7 @@ import { useGame } from '../state/store'
 import type { Macros } from '../state/store'
 import { forgePlan } from '../state/ritual'
 import type { Goal, Experience, RitePlan } from '../state/ritual'
-import { useToast } from '../ui/Toast'
+import { useToast } from '../ui/toastContext'
 
 /* ================================================================
    THE RITE OF EMBERS — onboarding quiz that forges a covenant
@@ -76,6 +76,7 @@ export default function RiteOfEmbers({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0)
   const [units, setUnits] = useState<'lb' | 'kg'>('lb')
   const [weight, setWeight] = useState('')
+  const [weightError, setWeightError] = useState('')
   const [bodyFat, setBodyFat] = useState(18)
   const [goal, setGoal] = useState<Goal>('taper')
   const [experience, setExperience] = useState<Experience>('unkindled')
@@ -110,6 +111,20 @@ export default function RiteOfEmbers({ onDone }: { onDone: () => void }) {
   }
 
   const weightValid = Number(weight) > 50 && Number(weight) < 700
+
+  /* required-field guard: advance from step 0 only with a sane weight, else speak up */
+  const submitWeight = () => {
+    if (!weightValid) {
+      setWeightError(
+        weight.trim() === ''
+          ? 'Speak thy weight — this field is required.'
+          : `That weight rings false. Give a number between 50 and 700 ${units}.`
+      )
+      return
+    }
+    setWeightError('')
+    setStep(1)
+  }
 
   return (
     <motion.div
@@ -181,16 +196,31 @@ export default function RiteOfEmbers({ onDone }: { onDone: () => void }) {
                 autoFocus
                 placeholder={units === 'lb' ? 'bodyweight, e.g. 172' : 'bodyweight, e.g. 78'}
                 value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && weightValid && setStep(1)}
-                className="input-dark min-h-14 text-center text-souls font-display text-xl"
+                onChange={(e) => {
+                  setWeight(e.target.value)
+                  if (weightError) setWeightError('')
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && submitWeight()}
+                aria-invalid={!!weightError}
+                className={`input-dark min-h-14 text-center text-souls font-display text-xl ${
+                  weightError ? 'border-blood-bright' : ''
+                }`}
                 aria-label="bodyweight"
               />
-              <button
-                disabled={!weightValid}
-                onClick={() => setStep(1)}
-                className="btn-ember w-full min-h-12 mt-4"
-              >
+              <AnimatePresence>
+                {weightError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    role="alert"
+                    className="font-ui text-xs text-blood-bright mt-2 text-center"
+                  >
+                    {weightError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+              <button onClick={submitWeight} className="btn-ember w-full min-h-12 mt-4">
                 Continue
               </button>
             </div>

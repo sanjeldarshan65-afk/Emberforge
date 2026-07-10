@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
 import { useGame } from '../state/store'
+import EmptyWidget from './EmptyWidget'
 
 /* ================================================================
    THE VESSEL'S BURDEN — bodyweight over time
@@ -43,11 +44,12 @@ export default function WeightLedger() {
 
   if (data.length < 2) {
     return (
-      <div className="panel p-5 text-center">
-        <p className="text-bone-dim italic text-sm">
-          Seal thy measurements on different days, and the burden's course shall be drawn here.
-        </p>
-      </div>
+      <EmptyWidget
+        title="The Burden Unmeasured"
+        body="Seal thy measurements on the Character Sheet above, across two or more days, and thy body's course shall be charted here."
+        cta="Seal Thy Measurements"
+        onCta={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      />
     )
   }
 

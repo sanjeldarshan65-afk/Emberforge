@@ -1,21 +1,14 @@
-import { createContext, useCallback, useContext, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ToastCtx } from './toastContext'
+import type { ToastKind, PushToast } from './toastContext'
 
 /* ================================================================
    ITEM-DROP TOASTS — "+ 150 Souls Gained"
    ================================================================ */
 
-export type ToastKind = 'souls' | 'ember' | 'blood'
-
 type Toast = { id: number; text: string; kind: ToastKind }
-
-type PushToast = (text: string, kind?: ToastKind) => void
-
-const ToastCtx = createContext<PushToast>(() => {})
-
-/** fire item-pickup notifications from any component */
-export const useToast = () => useContext(ToastCtx)
 
 const TOAST_MS = 3000
 let seq = 0

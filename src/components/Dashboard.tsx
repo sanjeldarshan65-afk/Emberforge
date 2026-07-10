@@ -1,11 +1,24 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, statusEffects, ASCEND_MULT, CURSE_DRAIN, epley } from '../state/store'
 import type { Battle, Vitals } from '../state/store'
+import { fatigueWithRelics } from '../state/recovery'
 import Avatar from './Avatar'
 import SoulsLedger from './SoulsLedger'
+import EchoesOfAsh from './EchoesOfAsh'
+import Kindling from './Kindling'
+import MuscleBalance from './MuscleBalance'
 import SigilVault from './SigilVault'
 import WeightLedger from './WeightLedger'
+import { CONSTELLATION } from '../state/constellation'
+import { ITEMS } from '../state/items'
+import { QUESTS } from '../state/quests'
+
+/* heavy modals — code-split so their chunks load on first open, not with the Sanctum */
+const TheHoard = lazy(() => import('./TheHoard'))
+const TheCovenants = lazy(() => import('./TheCovenants'))
+const Constellation = lazy(() => import('./Constellation'))
+const RiteOfAscension = lazy(() => import('./RiteOfAscension'))
 
 /* ---------- animation presets ---------- */
 const fadeUp = {
@@ -36,10 +49,32 @@ export default function Dashboard() {
   const logWeight = useGame((s) => s.logWeight)
   const [editing, setEditing] = useState(false)
   const [openBattle, setOpenBattle] = useState<Battle | null>(null)
+  const [hoardOpen, setHoardOpen] = useState(false)
+  const [covenantsOpen, setCovenantsOpen] = useState(false)
+  const [constellationOpen, setConstellationOpen] = useState(false)
+  const [riteOpen, setRiteOpen] = useState(false)
+  /* code-split latches: mount a heavy modal only after its first open — this defers its
+     chunk until needed, and (unlike gating on `open`) keeps it mounted so exit animations play */
+  const hoardEver = useRef(false)
+  const covenantsEver = useRef(false)
+  const constellationEver = useRef(false)
+  const riteEver = useRef(false)
+  if (hoardOpen) hoardEver.current = true
+  if (covenantsOpen) covenantsEver.current = true
+  if (constellationOpen) constellationEver.current = true
+  if (riteOpen) riteEver.current = true
+  const inventory = useGame((s) => s.inventory)
+  const claimedQuests = useGame((s) => s.claimedQuests)
+  const unlockedNodes = useGame((s) => s.unlockedNodes)
+  const ascensionLevel = useGame((s) => s.ascensionLevel)
+  const demoActive = useGame((s) => s.demoActive)
 
   const { streak, daysSinceLast, ascended, cursed } = statusEffects(battles)
-  /* muscle-heat now lives in the store; recompute only when the log changes */
-  const fatigue = useMemo(() => useGame.getState().fatigue(), [battles])
+  /* muscle-heat = battle history + fatigueRecovery relics (Hoard) + Constellation nodes */
+  const fatigue = useMemo(
+    () => fatigueWithRelics(battles, new Set(inventory.map((o) => o.id)), new Set(unlockedNodes)),
+    [battles, inventory, unlockedNodes]
+  )
 
   const leanMass = vitals.bodyweight * (1 - vitals.bodyFat / 100)
   const ratio = vitals.shoulders / vitals.waist
@@ -67,6 +102,18 @@ export default function Dashboard() {
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-8">
+      {demoActive && (
+        <motion.div
+          variants={fadeUp}
+          className="panel border-souls-dim/60 bg-iron/60 px-4 py-2 flex items-center justify-center gap-2"
+        >
+          <span className="text-souls-dim text-sm leading-none">&#9670;</span>
+          <span className="font-ui text-[0.7rem] text-souls-dim">
+            Demo data — a sample legend. Clear it in Settings.
+          </span>
+        </motion.div>
+      )}
+
       {/* ============ STATUS EFFECTS ============ */}
       <AnimatePresence initial={false}>
         {cursed && (
@@ -193,12 +240,20 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
+      <Kindling />
+
+      {/* ============ THE BODY'S BALANCE ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">The Body's Balance</div>
+        <MuscleBalance />
+      </motion.section>
+
       {/* ============ V-TAPER QUEST ============ */}
       <motion.section variants={fadeUp}>
         <div className={`${panelCls} panel-ornate p-5`}>
           <div className="flex items-baseline justify-between mb-1">
             <h3 className="font-display text-souls text-sm tracking-[0.2em] uppercase">
-              Quest: The Golden Taper
+              The Golden Taper
             </h3>
             <span className="font-ui text-xs text-bone-dim">shoulder : waist</span>
           </div>
@@ -228,6 +283,12 @@ export default function Dashboard() {
           <div className="font-ui text-xs text-faded mt-2 text-right">
             {taperPct.toFixed(1)}% of the way to the golden ratio
           </div>
+          <button
+            onClick={() => setCovenantsOpen(true)}
+            className="mt-4 w-full min-h-9 border border-souls-dim/40 text-souls-dim hover:text-souls hover:border-souls-dim font-display text-[0.55rem] tracking-[0.25em] uppercase transition-colors"
+          >
+            Sworn as a Covenant &middot; View
+          </button>
         </div>
       </motion.section>
 
@@ -244,7 +305,8 @@ export default function Dashboard() {
         {battles.length === 0 ? (
           <div className="panel p-6 text-center">
             <p className="text-bone-dim italic">
-              No battles yet fought. The Combat Log awaits thy first clash with the iron.
+              Thy chronicle is yet unwritten. Descend to the Combat Log and forge its first entry —
+              every battle thou fightest will be remembered here.
             </p>
           </div>
         ) : (
@@ -281,6 +343,12 @@ export default function Dashboard() {
         )}
       </motion.section>
 
+      {/* ============ ECHOES OF ASH ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">Echoes of Ash</div>
+        <EchoesOfAsh />
+      </motion.section>
+
       {/* ============ SOULS LEDGER ============ */}
       <motion.section variants={fadeUp}>
         <div className="divider-ornate mb-4">Souls Ledger</div>
@@ -292,6 +360,109 @@ export default function Dashboard() {
         <div className="divider-ornate mb-4">Sigils of the Forge</div>
         <SigilVault />
       </motion.section>
+
+      {/* ============ COVENANTS ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">Covenants</div>
+        <button
+          onClick={() => setCovenantsOpen(true)}
+          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+        >
+          <div>
+            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">Sworn Covenants</div>
+            <div className="font-ui text-xs text-bone-dim mt-0.5">
+              Goals tracked against thy deeds — souls &amp; relics for the faithful
+            </div>
+          </div>
+          <span className="stat-souls text-lg shrink-0">
+            {claimedQuests.length}
+            <span className="text-souls-dim text-sm"> / {QUESTS.length}</span>
+          </span>
+        </button>
+      </motion.section>
+
+      {covenantsEver.current && (
+        <Suspense fallback={null}>
+          <TheCovenants open={covenantsOpen} onClose={() => setCovenantsOpen(false)} />
+        </Suspense>
+      )}
+
+      {/* ============ THE HOARD ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">The Hoard</div>
+        <button
+          onClick={() => setHoardOpen(true)}
+          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+        >
+          <div>
+            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">Open the Hoard</div>
+            <div className="font-ui text-xs text-bone-dim mt-0.5">Relics, trophies &amp; titles of thy deeds</div>
+          </div>
+          <span className="stat-souls text-lg shrink-0">
+            {inventory.length}
+            <span className="text-souls-dim text-sm"> / {ITEMS.length}</span>
+          </span>
+        </button>
+      </motion.section>
+
+      {hoardEver.current && (
+        <Suspense fallback={null}>
+          <TheHoard open={hoardOpen} onClose={() => setHoardOpen(false)} />
+        </Suspense>
+      )}
+
+      {/* ============ THE CONSTELLATION ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">The Constellation</div>
+        <button
+          onClick={() => setConstellationOpen(true)}
+          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+        >
+          <div>
+            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">
+              Gaze upon the Stars
+            </div>
+            <div className="font-ui text-xs text-bone-dim mt-0.5">
+              Spend souls to kindle lasting power
+            </div>
+          </div>
+          <span className="stat-souls text-lg shrink-0">
+            {unlockedNodes.length}
+            <span className="text-souls-dim text-sm"> / {CONSTELLATION.length}</span>
+          </span>
+        </button>
+      </motion.section>
+
+      {constellationEver.current && (
+        <Suspense fallback={null}>
+          <Constellation open={constellationOpen} onClose={() => setConstellationOpen(false)} />
+        </Suspense>
+      )}
+
+      {/* ============ THE RITE OF ASCENSION ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">The Rite of Ascension</div>
+        <button
+          onClick={() => setRiteOpen(true)}
+          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+        >
+          <div>
+            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">
+              Pass on the Flame
+            </div>
+            <div className="font-ui text-xs text-bone-dim mt-0.5">
+              Spend souls to rise a Cycle — eternal power
+            </div>
+          </div>
+          <span className="stat-souls text-lg shrink-0">Cycle {ascensionLevel}</span>
+        </button>
+      </motion.section>
+
+      {riteEver.current && (
+        <Suspense fallback={null}>
+          <RiteOfAscension open={riteOpen} onClose={() => setRiteOpen(false)} />
+        </Suspense>
+      )}
 
       {/* ============ BATTLE CHRONICLE ============ */}
       <AnimatePresence>

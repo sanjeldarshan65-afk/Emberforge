@@ -10,6 +10,7 @@ import {
 } from 'recharts'
 import { useGame, MOVEMENTS, localDayKey } from '../state/store'
 import type { Movement } from '../state/store'
+import EmptyWidget, { navigateTab } from './EmptyWidget'
 
 /* ================================================================
    SOULS LEDGER — estimated 1RM over time, drawn in ember & gold
@@ -90,12 +91,29 @@ export default function SoulsLedger() {
   }, [battles])
 
   if (data.length < 2) {
+    if (stats.avg > 0) {
+      return (
+        <div className="panel panel-ornate p-5 text-center">
+          <div className="font-display text-[0.6rem] tracking-[0.25em] uppercase text-souls-dim mb-1">
+            Daily Combat Average
+          </div>
+          <div className="stat-souls text-3xl leading-none">
+            {stats.avg.toLocaleString()}
+            <span className="text-sm text-souls-dim ml-1">{units} / day</span>
+          </div>
+          <p className="text-faded italic text-sm mt-3">
+            One day stands in the ledger. Return tomorrow, and the lines will begin to rise.
+          </p>
+        </div>
+      )
+    }
     return (
-      <div className="panel p-6 text-center">
-        <p className="text-bone-dim italic">
-          The ledger needs at least two days of battle before the lines may rise. Fight on.
-        </p>
-      </div>
+      <EmptyWidget
+        title="The Ledger Sleeps"
+        body="No battles yet mark the ledger. Fight, and thy rising strength shall be drawn here in ember and gold."
+        cta="Enter the Combat Log"
+        onCta={() => navigateTab('combat')}
+      />
     )
   }
 

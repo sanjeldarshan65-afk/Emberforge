@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../state/store'
 import { seekGuidance } from '../ai/fireKeeper'
 import type { KeeperContext } from '../ai/fireKeeper'
+import { detectDeload } from '../state/deload'
+import { fatigueWithRelics } from '../state/recovery'
 import { pick, KEEPER_GREETINGS } from '../ui/flavor'
 
 /* ---------- typewriter: NPC dialogue reveal (tap to skip) ---------- */
@@ -66,6 +68,21 @@ export default function FireKeeper() {
   const [messages, setMessages] = useState<string[]>(() => [pick(KEEPER_GREETINGS)])
   const [thinking, setThinking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [deloadDismissed, setDeloadDismissed] = useState(false)
+
+  /* The Fading Flame — recompute overreaching whenever the log or Hoard changes.
+     fatigue() folds in any fatigueRecovery relics owned. */
+  const inventory = useGame((s) => s.inventory)
+  const unlockedNodes = useGame((s) => s.unlockedNodes)
+  const deloadFlags = useMemo(
+    () =>
+      detectDeload(
+        battles,
+        fatigueWithRelics(battles, new Set(inventory.map((o) => o.id)), new Set(unlockedNodes))
+      ),
+    [battles, inventory, unlockedNodes]
+  )
+  useEffect(() => setDeloadDismissed(false), [battles])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -108,6 +125,59 @@ export default function FireKeeper() {
           </p>
         </div>
       </div>
+
+      {/* ---- The Fading Flame · auto-deload counsel ---- */}
+      <AnimatePresence>
+        {deloadFlags.length > 0 && !deloadDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            className="panel p-4 border-ember/60"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="font-display text-[0.6rem] tracking-[0.25em] uppercase text-glow-ember">
+                &#9888; The Flame Fades
+              </div>
+              <button
+                onClick={() => setDeloadDismissed(true)}
+                aria-label="dismiss deload counsel"
+                className="min-h-8 min-w-8 -mt-1 -mr-1 shrink-0 text-faded hover:text-bone transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            <p className="text-bone-dim italic text-sm mt-1 mb-3">
+              Thy strength has stalled while the embers still burn. Bank the coals before the flame
+              dies — take a lighter session on these lifts.
+            </p>
+            <div className="space-y-2">
+              {deloadFlags.map((d) => (
+                <div
+                  key={d.movement}
+                  className="flex items-center justify-between gap-3 px-3 py-2 bg-charcoal border border-ash"
+                >
+                  <div className="min-w-0">
+                    <div className="font-display text-bone text-sm tracking-wider truncate">{d.movement}</div>
+                    <div className="font-ui text-[0.65rem] text-faded">
+                      {d.primary} aflame &middot; no record in 3 battles
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="stat-souls text-sm leading-none">
+                      {d.suggestedTopWeight}
+                      <span className="text-souls-dim text-xs"> &times; {d.suggestedSets} sets</span>
+                    </div>
+                    <div className="font-ui text-[0.6rem] text-faded mt-0.5">
+                      from {d.lastTopWeight} &times; {d.lastSets}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ---- dialogue scroll ---- */}
       <div

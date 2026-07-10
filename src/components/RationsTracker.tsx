@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, todayKey } from '../state/store'
-import type { Macros } from '../state/store'
-import { useToast } from '../ui/Toast'
+import type { Macros, SavedMeal } from '../state/store'
+import { useToast } from '../ui/toastContext'
+import TheCauldron from './TheCauldron'
 
 /* ================================================================
    MEAL CODEX — per-serving macros
@@ -136,12 +137,18 @@ export default function RationsTracker() {
   const rations = useGame((s) => s.rations)
   const logRation = useGame((s) => s.logRation)
   const removeRation = useGame((s) => s.removeRation)
+  const savedMeals = useGame((s) => s.savedMeals)
+  const saveMeal = useGame((s) => s.saveMeal)
+  const updateMeal = useGame((s) => s.updateMeal)
+  const deleteMeal = useGame((s) => s.deleteMeal)
 
   const toast = useToast()
   const [query, setQuery] = useState('')
   const [strict, setStrict] = useState(false)
+  const [cauldronOpen, setCauldronOpen] = useState(false)
+  const [editingMeal, setEditingMeal] = useState<SavedMeal | null>(null)
 
-  const today = rations.filter((r) => r.date === todayKey())
+  const today = useMemo(() => rations.filter((r) => r.date === todayKey()), [rations])
 
   const consumed = useMemo(
     () =>
@@ -154,7 +161,7 @@ export default function RationsTracker() {
         }),
         { calories: 0, protein: 0, carbs: 0, fats: 0 }
       ),
-    [rations]
+    [today]
   )
 
   const kcalLeft = Math.max(0, macroGoals.calories - consumed.calories)
@@ -187,6 +194,21 @@ export default function RationsTracker() {
       toast('Protein covenant fulfilled', 'ember')
     if (consumed.calories < macroGoals.calories && consumed.calories + f.calories >= macroGoals.calories)
       toast('Estus Flask filled', 'ember')
+  }
+
+  /* logging a saved meal fills the flask & bars exactly like a single item */
+  const consumeMeal = (m: SavedMeal) => {
+    logRation(m.name, { calories: m.calories, protein: m.protein, carbs: m.carbs, fats: m.fats })
+    toast(`+ ${m.name}`, 'souls')
+    if (consumed.protein < macroGoals.protein && consumed.protein + m.protein >= macroGoals.protein)
+      toast('Protein covenant fulfilled', 'ember')
+    if (consumed.calories < macroGoals.calories && consumed.calories + m.calories >= macroGoals.calories)
+      toast('Estus Flask filled', 'ember')
+  }
+
+  const openCauldron = (meal: SavedMeal | null) => {
+    setEditingMeal(meal)
+    setCauldronOpen(true)
   }
 
   return (
@@ -260,6 +282,70 @@ export default function RationsTracker() {
           </motion.p>
         )}
       </AnimatePresence>
+
+      {/* ============ THE CAULDRON · saved recipes ============ */}
+      <div className="flex items-center gap-3">
+        <div className="divider-ornate flex-1">Thy Recipes</div>
+        <button
+          onClick={() => openCauldron(null)}
+          className="btn-hollow min-h-10 px-4 text-[0.6rem] shrink-0"
+        >
+          &#9879; Brew a Meal
+        </button>
+      </div>
+
+      {savedMeals.length === 0 ? (
+        <p className="text-faded italic text-sm">
+          The cauldron sits cold. Brew a meal, and thereafter log it in a single tap.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {savedMeals.map((m) => (
+              <motion.div
+                layout
+                key={m.id}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.18 } }}
+                transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                className="panel panel-ornate p-4 flex items-center gap-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-bone text-sm tracking-wider truncate">{m.name}</div>
+                  <div className="font-ui text-xs text-bone-dim mt-1">
+                    {m.calories} kcal &middot; P {m.protein} &middot; C {m.carbs} &middot; F {m.fats}
+                  </div>
+                  <div className="font-ui text-[0.65rem] text-faded italic truncate mt-0.5">
+                    {m.items.map((i) => (i.qty > 1 ? `${i.name} ×${i.qty}` : i.name)).join(', ')}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0 w-24">
+                  <button onClick={() => consumeMeal(m)} className="btn-hollow min-h-10 text-[0.6rem]">
+                    Consume
+                  </button>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => openCauldron(m)}
+                      aria-label={`edit ${m.name}`}
+                      className="min-h-9 flex-1 border border-ash text-bone-dim text-[0.6rem] hover:border-souls-dim transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteMeal(m.id)}
+                      aria-label={`delete ${m.name}`}
+                      className="min-h-9 flex-1 border border-ash text-faded text-[0.6rem] hover:border-blood-bright hover:text-blood-bright transition-colors"
+                    >
+                      Del
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
 
       <input
         type="search"
@@ -346,6 +432,16 @@ export default function RationsTracker() {
           </div>
         </section>
       )}
+
+      <TheCauldron
+        open={cauldronOpen}
+        onClose={() => setCauldronOpen(false)}
+        foods={FOODS}
+        strict={strict}
+        editing={editingMeal}
+        onSave={saveMeal}
+        onUpdate={updateMeal}
+      />
     </div>
   )
 }

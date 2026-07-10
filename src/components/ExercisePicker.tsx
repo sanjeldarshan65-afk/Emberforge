@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EXERCISES, CATEGORIES } from '../state/exercises'
 import type { Category } from '../state/exercises'
+import { useModalDismiss } from '../ui/useModalDismiss'
 
 /* ================================================================
    EXERCISE PICKER — choose any rite from the catalog
@@ -16,6 +17,7 @@ export default function ExercisePicker({
   onClose: () => void
   onPick: (name: string) => void
 }) {
+  useModalDismiss(open, onClose)
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<'All' | Category>('All')
 
@@ -52,6 +54,9 @@ export default function ExercisePicker({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 340, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose an Exercise"
             className="absolute bottom-0 inset-x-0 max-h-[80vh] overflow-y-auto border-t border-souls-dim/50 bg-void/85 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             <div className="max-w-2xl mx-auto px-5 pt-5">
@@ -67,7 +72,7 @@ export default function ExercisePicker({
                 aria-label="search exercises"
               />
 
-              <div className="flex gap-1.5 flex-wrap mb-4">
+              <div className="flex gap-1.5 flex-wrap mb-3">
                 {(['All', ...CATEGORIES] as const).map((c) => (
                   <button
                     key={c}
@@ -80,6 +85,11 @@ export default function ExercisePicker({
                   </button>
                 ))}
               </div>
+
+              <p className="font-ui text-[0.58rem] text-faded mb-3">
+                Each rite shows the heatmap regions it kindles — <span className="text-ember">bright</span> is
+                primary, faded assists.
+              </p>
 
               <div className="space-y-1.5 mb-4">
                 {visible.map((e) => (
@@ -97,8 +107,24 @@ export default function ExercisePicker({
                           </span>
                         )}
                       </div>
-                      <div className="font-ui text-[0.65rem] text-faded truncate">
-                        {e.category} &middot; {e.primary.join(', ')}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span className="font-ui text-[0.6rem] text-faded">{e.category}</span>
+                        {e.heat.primary.map((g) => (
+                          <span
+                            key={`p-${g}`}
+                            className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ember/50 text-ember"
+                          >
+                            {g}
+                          </span>
+                        ))}
+                        {e.heat.secondary.map((g) => (
+                          <span
+                            key={`s-${g}`}
+                            className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ash text-faded"
+                          >
+                            {g}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     <span className="text-souls shrink-0">&rsaquo;</span>

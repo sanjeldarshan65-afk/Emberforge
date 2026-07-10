@@ -2,6 +2,9 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { muscleFatigue } from './recovery'
 import type { FatigueMap } from './recovery'
+import { LEVEL_DROPS, PR_MILESTONES, sumEffects, getItem } from './items'
+import { constellationEffects } from './constellation'
+import type { DemoSeed } from './demoData'
 
 /* ================================================================
    EMBERFORGE — global game state (Zustand + localStorage persist)
@@ -40,6 +43,14 @@ export type Macros = { calories: number; protein: number; carbs: number; fats: n
 
 export type Ration = Macros & { id: string; name: string; date: string }
 
+/* The Cauldron — a component of a crafted meal (per-unit macros × qty) */
+export type MealItem = Macros & { name: string; qty: number }
+/* a saved custom meal; the Macros fields hold the summed totals */
+export type SavedMeal = Macros & { id: string; name: string; items: MealItem[] }
+
+/* The Hoard — an owned item: which catalog id, how many, and when it was claimed */
+export type OwnedItem = { id: string; qty: number; acquiredDate: string }
+
 export type Profile = { name: string; createdAt: string; title?: string }
 
 export type Routine = { id: string; name: string; movements: Movement[] }
@@ -54,6 +65,7 @@ export type Settings = {
   sound: boolean          // synthesized UI audio
   taperGoal: number       // shoulder:waist target
   hollowed: boolean       // Hollowed Mode — spectral ash/bone palette
+  cloudEndpoint: string   // opt-in encrypted cloud-sync URL (empty = off, the default)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -66,6 +78,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: true,
   taperGoal: 1.618,
   hollowed: false,
+  cloudEndpoint: '',
 }
 
 export type BattleReward = {
@@ -76,6 +89,7 @@ export type BattleReward = {
   newLevel: number
   prBroken: boolean
   ascended: boolean
+  drops: string[] // item ids granted by this battle (level-up table + PR milestones)
 }
 
 /* ---------- date helpers ---------- */
@@ -121,6 +135,14 @@ export const ASCEND_STREAK = 3      // consecutive workout days for the buff
 export const ASCEND_MULT = 1.2      // souls multiplier while ascended
 export const CURSE_AFTER_DAYS = 4   // idle days before the Curse of Hollowing takes hold
 export const CURSE_DRAIN = 0.02     // souls drained per cursed (hollowed) day
+
+/* The Rite of Ascension — a prestige Cycle. Spend an escalating pile of souls to
+   pass on the flame and begin anew; each Cycle grants a permanent, stacking souls &
+   XP bonus. Real training history — battles, PRs, vitals — is never touched. */
+export const ASCEND_BASE_COST = 150000
+export const ASCEND_BONUS = 20        // % souls & xp granted per completed Cycle
+export const ASCEND_REVEAL_LEVEL = 8  // the Rite reveals itself at this level
+export const ascendCost = (cycle: number) => ASCEND_BASE_COST * (cycle + 1)
 
 /* ---------- status effects (pure, derived from battle history) ---------- */
 export type StatusEffects = {
@@ -173,10 +195,30 @@ type GameState = {
   profile: Profile | null
   settings: Settings
   routines: Routine[]
+  savedMeals: SavedMeal[]
+  installDismissed: boolean
+  inventory: OwnedItem[]
+  claimedQuests: string[]
+  bossesDefeated: string[]
+  unlockedNodes: string[]
+  ascensionLevel: number
+  demoActive: boolean
   setVital: (key: keyof Vitals, value: number) => void
   endBattle: (movement: Movement, sets: CompletedSet[]) => BattleReward
   logRation: (name: string, macros: Macros) => void
   removeRation: (id: string) => void
+  saveMeal: (meal: Omit<SavedMeal, 'id'>) => void
+  updateMeal: (id: string, meal: Omit<SavedMeal, 'id'>) => void
+  deleteMeal: (id: string) => void
+  dismissInstall: () => void
+  hasItem: (id: string) => boolean
+  grantItem: (id: string) => void
+  buyItem: (id: string, price: number) => boolean
+  claimQuest: (id: string, souls: number, itemReward?: string) => void
+  defeatBoss: (id: string, souls: number, trophy?: string) => void
+  unlockNode: (id: string, cost: number) => boolean
+  ascend: () => boolean
+  applyDemo: (seed: DemoSeed) => void
   applyStatusEffects: () => void
   setProfile: (name: string) => void
   anointTitle: (title: string) => void
@@ -209,9 +251,28 @@ export const useGame = create<GameState>()(
       profile: null,
       settings: DEFAULT_SETTINGS,
       routines: [],
+      savedMeals: [],
+      installDismissed: false,
+      /* The Hoard begins with what every ashen one carries from the first kindling */
+      inventory: [
+        { id: 'unkindled-ash', qty: 1, acquiredDate: new Date().toISOString() },
+        { id: 'tarnished-coin', qty: 1, acquiredDate: new Date().toISOString() },
+      ],
+      claimedQuests: [],
+      bossesDefeated: [],
+      unlockedNodes: [],
+      ascensionLevel: 0,
+      demoActive: false,
 
       /* derived muscle-fatigue heatmap (0 rested … 1 aflame), from battle history */
-      fatigue: () => muscleFatigue(get().battles),
+      fatigue: () =>
+        muscleFatigue(
+          get().battles,
+          1 +
+            (sumEffects(new Set(get().inventory.map((o) => o.id))).recoveryPct +
+              constellationEffects(new Set(get().unlockedNodes)).recoveryPct) /
+              100
+        ),
 
       setProfile: (name) =>
         set({ profile: { name, createdAt: new Date().toISOString() } }),
@@ -278,17 +339,46 @@ export const useGame = create<GameState>()(
         const withToday = [battle, ...s.battles]
         const { ascended } = statusEffects(withToday)
 
-        const xpGain =
-          sets.length * XP_PER_SET + XP_PER_BATTLE + (prBroken ? XP_PER_PR : 0)
+        /* relics ALREADY in the Hoard modify the take; drops from THIS battle do not */
+        const ownedIds = new Set(s.inventory.map((o) => o.id))
+        const eff = sumEffects(ownedIds)
+        const cEff = constellationEffects(new Set(s.unlockedNodes))
+        const ascBonus = s.ascensionLevel * ASCEND_BONUS // permanent per-Cycle souls & xp gain
+        const soulsPct = eff.soulsPct + cEff.soulsPct + ascBonus
+        const xpPct = eff.xpPct + cEff.xpPct + ascBonus
+
+        const xpGain = Math.round(
+          (sets.length * XP_PER_SET + XP_PER_BATTLE + (prBroken ? XP_PER_PR : 0)) * (1 + xpPct / 100)
+        )
         /* the Rite of Ascension — once the Golden Taper (1.618) is held, souls x1.5 forever */
         const taper = s.vitals.waist > 0 ? s.vitals.shoulders / s.vitals.waist : 0
         const ascendedTaper = taper >= 1.618
         const soulsGain = Math.round(
-          volume * (ascended ? ASCEND_MULT : 1) * (ascendedTaper ? 1.5 : 1)
+          volume *
+            (ascended ? ASCEND_MULT : 1) *
+            (ascendedTaper ? 1.5 : 1) *
+            (1 + soulsPct / 100)
         )
 
         const levelBefore = levelInfo(s.xp).level
         const levelAfter = levelInfo(s.xp + xpGain).level
+
+        /* ---- loot drops: level-up table + first-time PR milestones (never duplicated) ---- */
+        const drops: string[] = []
+        for (let lvl = levelBefore + 1; lvl <= levelAfter; lvl++) {
+          const id = LEVEL_DROPS[lvl]
+          if (id && !ownedIds.has(id) && !drops.includes(id)) drops.push(id)
+        }
+        if (prBroken) {
+          for (const m of PR_MILESTONES) {
+            if (battle.e1rm >= m.e1rm && !ownedIds.has(m.itemId) && !drops.includes(m.itemId))
+              drops.push(m.itemId)
+          }
+        }
+        const claimedAt = new Date().toISOString()
+        const inventory = drops.length
+          ? [...s.inventory, ...drops.map((id) => ({ id, qty: 1, acquiredDate: claimedAt }))]
+          : s.inventory
 
         set({
           xp: s.xp + xpGain,
@@ -297,6 +387,7 @@ export const useGame = create<GameState>()(
           lifetimeSets: s.lifetimeSets + sets.length,
           prs: prBroken ? { ...s.prs, [movement]: top.weight } : s.prs,
           battles: withToday.slice(0, BATTLES_KEPT),
+          inventory,
         })
 
         return {
@@ -307,6 +398,7 @@ export const useGame = create<GameState>()(
           newLevel: levelAfter,
           prBroken,
           ascended,
+          drops,
         }
       },
 
@@ -320,6 +412,83 @@ export const useGame = create<GameState>()(
 
       removeRation: (id) =>
         set((s) => ({ rations: s.rations.filter((r) => r.id !== id) })),
+
+      /* The Cauldron — persisted custom meals */
+      saveMeal: (meal) =>
+        set((s) => ({ savedMeals: [{ id: crypto.randomUUID(), ...meal }, ...s.savedMeals] })),
+      updateMeal: (id, meal) =>
+        set((s) => ({ savedMeals: s.savedMeals.map((m) => (m.id === id ? { id, ...meal } : m)) })),
+      deleteMeal: (id) =>
+        set((s) => ({ savedMeals: s.savedMeals.filter((m) => m.id !== id) })),
+
+      dismissInstall: () => set({ installDismissed: true }),
+
+      hasItem: (id) => get().inventory.some((o) => o.id === id),
+
+      /* the clean hook for granting any item by id — used by drops now, quests later.
+         Unique items never duplicate; stackable ones increment quantity. */
+      grantItem: (id) =>
+        set((s) => {
+          const existing = s.inventory.find((o) => o.id === id)
+          if (existing) {
+            if (!getItem(id)?.stackable) return {}
+            return { inventory: s.inventory.map((o) => (o.id === id ? { ...o, qty: o.qty + 1 } : o)) }
+          }
+          return { inventory: [...s.inventory, { id, qty: 1, acquiredDate: new Date().toISOString() }] }
+        }),
+
+      /* The Merchant — spend souls to acquire an item. Blocks on insufficient
+         souls or an already-owned unique. Returns false when the deal is refused. */
+      buyItem: (id, price) => {
+        const s = get()
+        const owned = s.inventory.find((o) => o.id === id)
+        if (s.souls < price) return false
+        if (owned && !getItem(id)?.stackable) return false
+        const now = new Date().toISOString()
+        const inventory = owned
+          ? s.inventory.map((o) => (o.id === id ? { ...o, qty: o.qty + 1 } : o))
+          : [...s.inventory, { id, qty: 1, acquiredDate: now }]
+        set({ souls: s.souls - price, inventory })
+        return true
+      },
+
+      /* Covenants — claim a completed quest: souls + (optional) item via the loot path, once */
+      claimQuest: (id, souls, itemReward) => {
+        const s = get()
+        if (s.claimedQuests.includes(id)) return
+        if (itemReward) s.grantItem(itemReward)
+        set((st) => ({ souls: st.souls + souls, claimedQuests: [...st.claimedQuests, id] }))
+      },
+
+      /* Boss Encounters — fell a challenge lift: bonus souls + trophy via the loot path, once */
+      defeatBoss: (id, souls, trophy) => {
+        const s = get()
+        if (s.bossesDefeated.includes(id)) return
+        if (trophy) s.grantItem(trophy)
+        set((st) => ({ souls: st.souls + souls, bossesDefeated: [...st.bossesDefeated, id] }))
+      },
+
+      /* The Constellation — spend souls to unlock a node (prerequisites enforced in the UI) */
+      unlockNode: (id, cost) => {
+        const s = get()
+        if (s.unlockedNodes.includes(id) || s.souls < cost) return false
+        set({ souls: s.souls - cost, unlockedNodes: [...s.unlockedNodes, id] })
+        return true
+      },
+
+      /* The Rite of Ascension — spend an escalating pile of souls to begin a new Cycle.
+         Grants a permanent, stacking souls & XP bonus; logged history is left intact. */
+      ascend: () => {
+        const s = get()
+        const cost = ascendCost(s.ascensionLevel)
+        if (s.souls < cost) return false
+        set({ souls: s.souls - cost, ascensionLevel: s.ascensionLevel + 1 })
+        return true
+      },
+
+      /* Light the First Flame — replace the live training slices with demo data.
+         The caller backs up the real save first, so this never destroys progress. */
+      applyDemo: (seed) => set({ ...seed, demoActive: true }),
 
       /* the Curse Mark of Death — call on app load; drains 5% of souls
          for every cursed day not yet paid, exactly once per day */

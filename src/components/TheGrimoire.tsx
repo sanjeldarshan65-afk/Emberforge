@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, MOVEMENTS } from '../state/store'
 import type { Movement, Routine } from '../state/store'
 import ExercisePicker from './ExercisePicker'
+import { useModalDismiss } from '../ui/useModalDismiss'
 
 /* ================================================================
    THE GRIMOIRE — saved battle plans (routines)
@@ -19,6 +20,7 @@ export default function TheGrimoire({
   onSelect: (r: Routine) => void
   startCreating?: boolean
 }) {
+  useModalDismiss(open, onClose)
   const routines = useGame((s) => s.routines)
   const saveRoutine = useGame((s) => s.saveRoutine)
   const updateRoutine = useGame((s) => s.updateRoutine)
@@ -70,6 +72,9 @@ export default function TheGrimoire({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 340, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="The Grimoire"
             className="absolute bottom-0 inset-x-0 max-h-[85vh] overflow-y-auto border-t border-souls-dim/50 bg-void/80 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             <div className="max-w-2xl mx-auto px-5 pt-5">

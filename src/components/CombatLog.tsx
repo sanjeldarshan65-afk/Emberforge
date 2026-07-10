@@ -1,20 +1,23 @@
-import { useState } from 'react'
+import { useState, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useGame, MOVEMENTS } from '../state/store'
 import type { Movement } from '../state/store'
-import { useToast } from '../ui/Toast'
+import { useToast } from '../ui/toastContext'
 import RestTimer from './RestTimer'
 import PlateForge from './PlateForge'
 import VictoryScroll from './VictoryScroll'
 import type { ScrollData } from './VictoryScroll'
 import VictoryOverlay from './VictoryOverlay'
 import type { Victory } from './VictoryOverlay'
-import TheGrimoire from './TheGrimoire'
 import type { Routine } from '../state/store'
 import { useSound } from '../ui/sound'
 import ExercisePicker from './ExercisePicker'
 import { pick, VICTORY_LINES } from '../ui/flavor'
+
+/* heavy gate modals — code-split so their chunks load on first open, not with Combat */
+const TheGrimoire = lazy(() => import('./TheGrimoire'))
+const BossEncounters = lazy(() => import('./BossEncounters'))
 
 type SetRow = { id: number; reps: string; weight: string; done: boolean; failed: boolean }
 
@@ -97,6 +100,7 @@ function SwipeableSet({
 
   const beatsPR = Number(row.weight) > pr && pr > 0
   const showFill = !!ghost && !row.done && !row.weight && !row.reps
+  const readyToLog = !row.done && !!row.weight && !!row.reps
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.x < -SWIPE_PX) onDelete(row.id)
@@ -205,7 +209,7 @@ function SwipeableSet({
           value={row.reps}
           disabled={row.done}
           onChange={(e) => onPatch(row.id, { reps: e.target.value })}
-          className="input-dark min-h-12 w-20 text-center disabled:opacity-60"
+          className="input-dark min-h-12 w-16 text-center disabled:opacity-60"
           aria-label="repetitions"
         />
 
@@ -213,13 +217,29 @@ function SwipeableSet({
           onClick={() => onPatch(row.id, { done: !row.done, failed: false })}
           disabled={!row.done && (!row.weight || !row.reps)}
           aria-label={row.done ? 'undo set' : 'complete set'}
-          className={`min-h-12 min-w-12 shrink-0 border font-display text-lg transition-colors duration-200 disabled:opacity-30 ${
+          className={`min-h-12 w-14 shrink-0 flex flex-col items-center justify-center gap-0.5 border transition-all duration-200 disabled:opacity-30 ${
             row.done
-              ? 'border-ember text-glow-ember bg-iron'
-              : 'border-ash text-bone-dim active:border-ember'
+              ? 'border-ember bg-ember/15 text-glow-ember shadow-ember-glow'
+              : readyToLog
+                ? 'border-ember text-ember animate-ember-pulse'
+                : 'border-ash text-bone-dim active:border-ember'
           }`}
         >
-          {row.done ? '♦' : '◇'}
+          <svg
+            viewBox="0 0 24 24"
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M5 13l4 4L19 6" />
+          </svg>
+          <span className="font-display text-[0.5rem] tracking-[0.15em] uppercase leading-none">
+            {row.done ? 'Slain' : 'Slay'}
+          </span>
         </button>
 
         {/* Bloodstain — mark this set a failed attempt */}
@@ -253,10 +273,17 @@ export default function CombatLog() {
 
   const [mode, setMode] = useState<'gate' | 'battle'>('gate')
   const [plan, setPlan] = useState<Movement[] | null>(null)
-  const [planIndex, setPlanIndex] = useState(0)
+  const [sheets, setSheets] = useState<Record<string, SetRow[]>>({})
   const [showGrimoire, setShowGrimoire] = useState(false)
   const [grimoireCreating, setGrimoireCreating] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [showBosses, setShowBosses] = useState(false)
+  /* code-split latches: mount a gate modal only after its first open — defers the chunk,
+     then keeps it mounted so its exit animation still plays on close */
+  const grimoireEver = useRef(false)
+  const bossesEver = useRef(false)
+  if (showGrimoire) grimoireEver.current = true
+  if (showBosses) bossesEver.current = true
 
   const [movement, setMovement] = useState<Movement>('Squat')
   const [rows, setRows] = useState<SetRow[]>(freshRows)
@@ -265,6 +292,7 @@ export default function CombatLog() {
   const [plateWeight, setPlateWeight] = useState<number | null>(null)
   const [scroll, setScroll] = useState<ScrollData | null>(null)
   const [victoryLine, setVictoryLine] = useState<string>(VICTORY_LINES[0])
+  const [restOpen, setRestOpen] = useState(false)
 
   const pr = prs[movement] ?? 0
 
@@ -276,14 +304,14 @@ export default function CombatLog() {
 
   const enterVoid = () => {
     setPlan(null)
-    setPlanIndex(0)
+    setSheets({})
     setRows(freshRows())
     setMode('battle')
   }
 
   const wieldRoutine = (r: Routine) => {
     setPlan(r.movements)
-    setPlanIndex(0)
+    setSheets({})
     setMovement(r.movements[0])
     setRows(prefillRows(r.movements[0]))
     setShowGrimoire(false)
@@ -294,13 +322,17 @@ export default function CombatLog() {
   const fleeToCrossroads = () => {
     setMode('gate')
     setPlan(null)
-    setPlanIndex(0)
+    setSheets({})
     setRows(freshRows())
   }
 
   const selectMovement = (m: Movement) => {
+    if (m === movement) return
+    /* stow the current lift's sets, then restore the target lift's (or a fresh sheet).
+       Each exercise keeps its own sets for the length of the session. */
+    setSheets((s) => ({ ...s, [movement]: rows }))
+    setRows(sheets[m] ?? (plan ? prefillRows(m) : freshRows()))
     setMovement(m)
-    setRows(plan ? prefillRows(m) : freshRows())
   }
 
   const patchRow = (id: number, patch: Partial<SetRow>) => {
@@ -327,55 +359,94 @@ export default function CombatLog() {
   const addRow = () => setRows((rs) => [...rs, newRow()])
 
   const completedSets = rows.filter((r) => r.done)
+  /* the session may be ended if ANY lift — the active sheet or a stowed one — has a completed set */
+  const canFinish =
+    completedSets.length > 0 ||
+    Object.entries(sheets).some(([m, rs]) => m !== movement && rs.some((r) => r.done))
+
+  /* session-wide totals: every completed set across the active sheet + every stowed lift */
+  const sessionDone = [
+    ...completedSets,
+    ...Object.entries(sheets).flatMap(([m, rs]) => (m === movement ? [] : rs.filter((r) => r.done))),
+  ]
+  const sessionTonnage = sessionDone.reduce((t, r) => t + Number(r.weight) * Number(r.reps), 0)
+  const sessionSets = sessionDone.length
 
   /* ---- iron memory: the log remembers thy last clash with this foe ---- */
   const lastBattle = battles.find((b) => b.movement === movement)
   const fillRow = (id: number, g: { weight: number; reps: number }) =>
     patchRow(id, { weight: String(g.weight), reps: String(g.reps) })
-  const tonnage = completedSets.reduce((t, r) => t + Number(r.weight) * Number(r.reps), 0)
   const lastVolume = lastBattle?.volume ?? 0
 
   const finishBattle = () => {
-    if (completedSets.length === 0) return
-    const sets = completedSets.map((r) => ({
-      weight: Number(r.weight),
-      reps: Number(r.reps),
-    }))
+    /* Every lift with at least one completed set is logged as its own battle,
+       then their spoils are gathered into a single Victory. */
+    const consolidated: Record<string, SetRow[]> = { ...sheets, [movement]: rows }
+    const keys = (plan ?? Object.keys(consolidated)) as string[]
+    const toLog = keys
+      .filter((m, i, a) => a.indexOf(m) === i)
+      .filter((m) => (consolidated[m] ?? []).some((row) => row.done))
+    if (toLog.length === 0) return
+
     const xpBefore = useGame.getState().xp
-    const battleTonnage = sets.reduce((t, x) => t + x.weight * x.reps, 0)
-    const r = endBattle(movement, sets)
+    let totalXp = 0
+    let totalSouls = 0
+    let tonnage = 0
+    let anyPR = false
+    let anyLevel = false
+    let anyAscended = false
+    let newLevel = 0
+    const drops: string[] = []
+    let share: ScrollData | undefined
+
+    for (const mv of toLog) {
+      const sets = (consolidated[mv] ?? [])
+        .filter((row) => row.done)
+        .map((row) => ({ weight: Number(row.weight), reps: Number(row.reps) }))
+      const rr = endBattle(mv as Movement, sets)
+      totalXp += rr.xp
+      totalSouls += rr.souls
+      tonnage += sets.reduce((t, x) => t + x.weight * x.reps, 0)
+      anyPR = anyPR || rr.prBroken
+      anyLevel = anyLevel || rr.leveledUp
+      anyAscended = anyAscended || rr.ascended
+      newLevel = rr.newLevel || newLevel
+      drops.push(...rr.drops)
+      if (rr.prBroken && !share) {
+        const top = sets.reduce((a, b) => (b.weight > a.weight ? b : a), sets[0])
+        share = { movement: mv as Movement, weight: top.weight, reps: top.reps, xp: rr.xp, souls: rr.souls }
+      }
+    }
+
     toll()
     setVictoryLine(pick(VICTORY_LINES))
-    const top = sets.reduce((a, b) => (b.weight > a.weight ? b : a), sets[0])
     setVictory({
-      reward: r,
-      tonnage: battleTonnage,
+      reward: {
+        movement: toLog[0] as Movement,
+        xp: totalXp,
+        souls: totalSouls,
+        leveledUp: anyLevel,
+        newLevel,
+        prBroken: anyPR,
+        ascended: anyAscended,
+        drops,
+      },
+      tonnage,
       xpBefore,
-      xpAfter: xpBefore + r.xp,
-      share: r.prBroken
-        ? { movement, weight: top.weight, reps: top.reps, xp: r.xp, souls: r.souls }
-        : undefined,
+      xpAfter: xpBefore + totalXp,
+      share,
     })
-    toast(`+ ${r.souls.toLocaleString()} Souls Gained`, 'souls')
-    toast(`+ ${r.xp} XP`, 'souls')
-    if (r.prBroken) toast('Record Shattered', 'ember')
-    if (r.leveledUp) toast(`Level Up — thou art Lv ${r.newLevel}`, 'ember')
+    toast(`+ ${totalSouls.toLocaleString()} Souls Gained`, 'souls')
+    toast(`+ ${totalXp} XP`, 'souls')
+    if (anyPR) toast('Record Shattered', 'ember')
+    if (anyLevel) toast(`Level Up — thou art Lv ${newLevel}`, 'ember')
+    /* Every lift is now recorded. Claim Rewards / Share ends the session cleanly via endAndExit. */
+  }
 
-    /* advance the battle plan */
-    if (plan && planIndex < plan.length - 1) {
-      const next = plan[planIndex + 1]
-      setPlanIndex(planIndex + 1)
-      setMovement(next)
-      setRows(prefillRows(next))
-      toast(`Next foe: ${next}`, 'ember')
-    } else {
-      if (plan) {
-        setPlan(null)
-        setPlanIndex(0)
-        toast('The battle plan is fulfilled', 'ember')
-      }
-      setRows(freshRows())
-    }
+  /* Claim Rewards / Share both terminate the session and return to the gate */
+  const endAndExit = () => {
+    setVictory(null)
+    fleeToCrossroads()
   }
 
   /* ============ THE CROSSROADS ============ */
@@ -424,6 +495,24 @@ export default function CombatLog() {
           </div>
         </div>
 
+        <button
+          onClick={() => setShowBosses(true)}
+          className="panel panel-ornate w-full p-5 text-left"
+          style={{ borderColor: 'var(--color-blood-bright)' }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-display text-blood-bright tracking-[0.2em] uppercase text-sm mb-1">
+                Boss Encounters
+              </div>
+              <p className="font-ui text-xs text-bone-dim">
+                Great enemies of the iron. Fell them for souls and trophies.
+              </p>
+            </div>
+            <span className="text-blood-bright text-xl leading-none">&#9876;</span>
+          </div>
+        </button>
+
         <button onClick={enterVoid} className="panel panel-ornate w-full p-5 text-left">
           <div className="font-display text-souls tracking-[0.2em] uppercase text-sm mb-1">
             Enter the Void
@@ -443,19 +532,32 @@ export default function CombatLog() {
           manage the grimoire
         </button>
 
-        <TheGrimoire
-          open={showGrimoire}
-          onClose={() => setShowGrimoire(false)}
-          onSelect={wieldRoutine}
-          startCreating={grimoireCreating}
-        />
+        {bossesEver.current && (
+          <Suspense fallback={null}>
+            <BossEncounters open={showBosses} onClose={() => setShowBosses(false)} />
+          </Suspense>
+        )}
+
+        {grimoireEver.current && (
+          <Suspense fallback={null}>
+            <TheGrimoire
+              open={showGrimoire}
+              onClose={() => setShowGrimoire(false)}
+              onSelect={wieldRoutine}
+              startCreating={grimoireCreating}
+            />
+          </Suspense>
+        )}
       </div>
     )
   }
 
   /* ============ THE BATTLE ============ */
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 transition-[padding] duration-300"
+      style={{ paddingTop: restOpen ? '5.5rem' : undefined }}
+    >
       <div className="flex items-center gap-3">
         <div className="divider-ornate flex-1">Combat Log</div>
         <button
@@ -473,36 +575,43 @@ export default function CombatLog() {
             Total Tonnage
           </span>
           <span className="font-ui text-xs">
-            <span className="stat-souls text-base">{tonnage.toLocaleString()}</span>
+            <span className="stat-souls text-base">{sessionTonnage.toLocaleString()}</span>
             <span className="text-faded"> {settings.units}</span>
-            {lastVolume > 0 && (
-              <span className={tonnage >= lastVolume ? 'text-verdant' : 'text-faded'}>
+            {!plan && lastVolume > 0 && (
+              <span className={sessionTonnage >= lastVolume ? 'text-verdant' : 'text-faded'}>
                 {' '}&middot; last {lastVolume.toLocaleString()}
-                {tonnage >= lastVolume ? ' \u25B2' : ''}
+                {sessionTonnage >= lastVolume ? ' \u25B2' : ''}
               </span>
             )}
           </span>
         </div>
       </div>
 
-      {/* ---- battle plan strip ---- */}
+      {/* ---- battle plan strip: tap a foe to switch; each keeps its own sets ---- */}
       {plan && (
         <>
           <div className="flex flex-wrap gap-2 justify-center">
-            {plan.map((m, i) => (
-              <span
-                key={`${m}-${i}`}
-                className={`px-3 py-1.5 border font-display text-[0.6rem] tracking-[0.15em] uppercase ${
-                  i < planIndex
-                    ? 'border-ash text-faded line-through'
-                    : i === planIndex
+            {plan.map((m, i) => {
+              const active = m === movement
+              const logged = (active ? rows : (sheets[m] ?? [])).some((r) => r.done)
+              return (
+                <button
+                  key={`${m}-${i}`}
+                  onClick={() => selectMovement(m)}
+                  aria-pressed={active}
+                  className={`px-3 py-1.5 border font-display text-[0.6rem] tracking-[0.15em] uppercase transition-colors ${
+                    active
                       ? 'border-ember text-glow-ember shadow-ember-glow'
-                      : 'border-ash text-bone-dim'
-                }`}
-              >
-                {i < planIndex ? '\u2713 ' : ''}{m}
-              </span>
-            ))}
+                      : logged
+                        ? 'border-souls-dim text-souls'
+                        : 'border-ash text-bone-dim active:border-souls-dim'
+                  }`}
+                >
+                  {logged && !active ? '\u2713 ' : ''}
+                  {m}
+                </button>
+              )
+            })}
           </div>
           <div className="font-display text-bone text-lg tracking-wider text-center">{movement}</div>
         </>
@@ -555,7 +664,7 @@ export default function CombatLog() {
       </div>
 
       <p className="font-ui text-xs text-faded text-center">
-        swipe a set left to discard &middot; right to duplicate
+        swipe left to discard &middot; right to duplicate &middot; tap &#9670; to undo a set
       </p>
 
       {/* ---- set rows ---- */}
@@ -592,7 +701,7 @@ export default function CombatLog() {
           + Another Set
         </button>
         <button
-          disabled={completedSets.length === 0}
+          disabled={!canFinish}
           className="btn-ember min-h-12 flex-1"
           onClick={finishBattle}
         >
@@ -600,13 +709,15 @@ export default function CombatLog() {
         </button>
       </div>
 
-      {completedSets.length > 0 && (
+      {sessionSets > 0 && (
         <p className="text-center font-ui text-xs text-bone-dim">
-          {completedSets.length} / {rows.length} sets vanquished
+          {plan
+            ? `${sessionSets} ${sessionSets === 1 ? 'set' : 'sets'} vanquished this session`
+            : `${completedSets.length} / ${rows.length} sets vanquished`}
         </p>
       )}
 
-      <RestTimer trigger={timerNonce} />
+      <RestTimer trigger={timerNonce} onOpenChange={setRestOpen} />
 
       <PlateForge weight={plateWeight} onClose={() => setPlateWeight(null)} />
 
@@ -619,13 +730,19 @@ export default function CombatLog() {
         }}
       />
 
-      <VictoryScroll scroll={scroll} onClose={() => setScroll(null)} />
+      <VictoryScroll
+        scroll={scroll}
+        onClose={() => {
+          setScroll(null)
+          fleeToCrossroads()
+        }}
+      />
 
       <VictoryOverlay
         victory={victory}
         line={victoryLine}
         units={settings.units}
-        onClose={() => setVictory(null)}
+        onClose={endAndExit}
         onShare={(d) => {
           setVictory(null)
           setScroll(d)

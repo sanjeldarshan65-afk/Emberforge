@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MUSCLE_GROUPS, recoveryHoursLeft } from '../state/recovery'
 import type { FatigueMap, MuscleGroup } from '../state/recovery'
+import { FRONT, BACK, BODY } from './avatarAnatomy'
+import type { MShape } from './avatarAnatomy'
 
 /* ================================================================
    THE VESSEL — an anatomical muscle heatmap.
@@ -19,81 +21,34 @@ const emberStatus = (f: number) =>
   : f < 0.7 ? 'Embers burning'
   : 'Embers roaring'
 
-/* ---------- muscle geometry (viewBox 0 0 200 300) ---------- */
-type MShape =
-  | { t: 'e'; cx: number; cy: number; rx: number; ry: number }
-  | { t: 'r'; x: number; y: number; w: number; h: number; rx: number }
-  | { t: 'p'; d: string }
+/* ---------- muscle geometry lives in avatarAnatomy.ts ---------- */
 
-const FRONT: Record<MuscleGroup, MShape[]> = {
-  Shoulders: [
-    { t: 'e', cx: 63, cy: 78, rx: 13, ry: 11 },
-    { t: 'e', cx: 137, cy: 78, rx: 13, ry: 11 },
-  ],
-  Chest: [
-    { t: 'p', d: 'M98 84 C90 80 78 82 74 90 C72 98 78 104 90 104 C97 104 99 96 98 84 Z' },
-    { t: 'p', d: 'M102 84 C110 80 122 82 126 90 C128 98 122 104 110 104 C103 104 101 96 102 84 Z' },
-  ],
-  Core: [
-    { t: 'r', x: 90, y: 112, w: 9, h: 11, rx: 2 },
-    { t: 'r', x: 101, y: 112, w: 9, h: 11, rx: 2 },
-    { t: 'r', x: 90, y: 126, w: 9, h: 11, rx: 2 },
-    { t: 'r', x: 101, y: 126, w: 9, h: 11, rx: 2 },
-    { t: 'r', x: 91, y: 140, w: 8, h: 11, rx: 2 },
-    { t: 'r', x: 101, y: 140, w: 8, h: 11, rx: 2 },
-  ],
-  Back: [
-    { t: 'p', d: 'M74 106 C68 116 68 132 78 146 C80 132 80 118 80 108 Z' },
-    { t: 'p', d: 'M126 106 C132 116 132 132 122 146 C120 132 120 118 120 108 Z' },
-  ],
-  Legs: [
-    { t: 'e', cx: 88, cy: 205, rx: 12, ry: 34 },
-    { t: 'e', cx: 112, cy: 205, rx: 12, ry: 34 },
-  ],
+type ShapeProps = { fill?: string; opacity?: number; stroke?: string; strokeWidth?: number }
+
+function Shape({ s, ...p }: { s: MShape } & ShapeProps) {
+  const props = { ...p, vectorEffect: 'non-scaling-stroke' as const }
+  if (s.t === 'e') return <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} {...props} />
+  if (s.t === 'r') return <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} {...props} />
+  return <path d={s.d} {...props} />
 }
 
-const BACK: Record<MuscleGroup, MShape[]> = {
-  Shoulders: [
-    { t: 'e', cx: 63, cy: 78, rx: 12, ry: 10 },
-    { t: 'e', cx: 137, cy: 78, rx: 12, ry: 10 },
-  ],
-  Chest: [], // not visible from behind
-  Back: [
-    { t: 'p', d: 'M100 62 L80 82 L100 116 L120 82 Z' },
-    { t: 'p', d: 'M80 96 C74 112 78 138 96 150 L96 108 Z' },
-    { t: 'p', d: 'M120 96 C126 112 122 138 104 150 L104 108 Z' },
-  ],
-  Core: [
-    { t: 'r', x: 92, y: 120, w: 6, h: 34, rx: 2 },
-    { t: 'r', x: 102, y: 120, w: 6, h: 34, rx: 2 },
-  ],
-  Legs: [
-    { t: 'p', d: 'M99 168 C88 168 82 176 84 186 C86 194 94 194 99 190 Z' },
-    { t: 'p', d: 'M101 168 C112 168 118 176 116 186 C114 194 106 194 101 190 Z' },
-    { t: 'e', cx: 89, cy: 215, rx: 10, ry: 26 },
-    { t: 'e', cx: 111, cy: 215, rx: 10, ry: 26 },
-    { t: 'e', cx: 89, cy: 262, rx: 8, ry: 18 },
-    { t: 'e', cx: 111, cy: 262, rx: 8, ry: 18 },
-  ],
-}
-
-/* body silhouette, shared by both views (symmetric) */
-const BODY = [
-  'M91 40 L92 52 L108 52 L109 40',
-  'M70 66 C60 70 56 78 58 96 L64 150 C66 164 74 170 82 172 L118 172 C126 170 134 164 136 150 L142 96 C144 78 140 70 130 66 C120 60 80 60 70 66 Z',
-  'M58 72 C50 76 46 86 47 100 L44 150 C43 160 47 168 52 168 C58 168 60 160 60 150 L64 104 C65 92 64 80 62 74 Z',
-  'M142 72 C150 76 154 86 153 100 L156 150 C157 160 153 168 148 168 C142 168 140 160 140 150 L136 104 C135 92 136 80 138 74 Z',
-  'M84 172 C80 176 78 186 80 210 L82 250 C83 270 86 286 90 286 C95 286 97 270 98 250 L100 200 L99 176 Z',
-  'M116 172 C120 176 122 186 120 210 L118 250 C117 270 114 286 110 286 C105 286 103 270 102 250 L100 200 L101 176 Z',
-]
-
-function Shape({ s, fill, opacity, stroke, strokeWidth }: {
-  s: MShape; fill?: string; opacity?: number; stroke?: string; strokeWidth?: number
-}) {
-  const p = { fill, opacity, stroke, strokeWidth, vectorEffect: 'non-scaling-stroke' as const }
-  if (s.t === 'e') return <ellipse cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} {...p} />
-  if (s.t === 'r') return <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx} {...p} />
-  return <path d={s.d} {...p} />
+/* renders each shape, plus its mirror across the midline when marked —
+   the figure stays symmetric by construction */
+function ShapeSet({ shapes, ...p }: { shapes: MShape[] } & ShapeProps) {
+  return (
+    <>
+      {shapes.map((s, i) => (
+        <Fragment key={i}>
+          <Shape s={s} {...p} />
+          {s.m && (
+            <g transform="translate(200 0) scale(-1 1)">
+              <Shape s={s} {...p} />
+            </g>
+          )}
+        </Fragment>
+      ))}
+    </>
+  )
 }
 
 type Tip = { group: MuscleGroup; x: number; y: number }
@@ -176,10 +131,8 @@ export default function Avatar({
           <g transform={`translate(100 0) scale(${sx} 1) translate(-100 0)`}>
             {/* ---- body silhouette ---- */}
             <g fill="var(--color-charcoal)" stroke={stroke} strokeWidth="1.4" strokeLinejoin="round" pointerEvents="none">
-              <circle cx="100" cy="28" r="14" />
-              {BODY.map((d, i) => (
-                <path key={i} d={d} />
-              ))}
+              <circle cx="100" cy="24" r="13" />
+              <ShapeSet shapes={BODY} />
             </g>
 
             {/* ---- muscles: resting relief + ember heat ---- */}
@@ -197,16 +150,13 @@ export default function Avatar({
                   aria-label={`${group}: ${emberStatus(f)}`}
                 >
                   {/* resting relief — always visible, defines the muscle */}
-                  {shapes.map((s, i) => (
-                    <Shape
-                      key={`b${i}`}
-                      s={s}
-                      fill="var(--color-stone)"
-                      opacity={selected ? 0.55 : 0.26}
-                      stroke={selected ? 'var(--color-souls)' : undefined}
-                      strokeWidth={selected ? 1 : undefined}
-                    />
-                  ))}
+                  <ShapeSet
+                    shapes={shapes}
+                    fill="var(--color-stone)"
+                    opacity={selected ? 0.55 : 0.26}
+                    stroke={selected ? 'var(--color-souls)' : undefined}
+                    strokeWidth={selected ? 1 : undefined}
+                  />
                   {/* ember heat — grows with fatigue, breathing while hot */}
                   {hot && (
                     <motion.g
@@ -215,16 +165,13 @@ export default function Avatar({
                       animate={{ opacity: [f * 0.5, f * 0.82, f * 0.5] }}
                       transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
                     >
-                      {shapes.map((s, i) => (
-                        <Shape key={`h${i}`} s={s} fill="#ff7518" />
-                      ))}
+                      <ShapeSet shapes={shapes} fill="var(--color-ember)" />
                     </motion.g>
                   )}
                   {/* white-hot core when truly aflame */}
-                  {f > 0.66 &&
-                    shapes.map((s, i) => (
-                      <Shape key={`w${i}`} s={s} fill="#ffe0af" opacity={(f - 0.66) * 1.6} />
-                    ))}
+                  {f > 0.66 && (
+                    <ShapeSet shapes={shapes} fill="var(--color-ember-bright)" opacity={(f - 0.66) * 1.6} />
+                  )}
                 </g>
               )
             })}
@@ -266,8 +213,8 @@ export default function Avatar({
                   aria-hidden
                   className="h-1.5 w-1.5 rounded-full"
                   style={{
-                    background: tipHot ? '#ff7518' : 'var(--color-souls-dim)',
-                    boxShadow: tipHot ? '0 0 8px rgba(255,117,24,0.9)' : 'none',
+                    background: tipHot ? 'var(--color-ember)' : 'var(--color-souls-dim)',
+                    boxShadow: tipHot ? '0 0 8px var(--color-ember)' : 'none',
                   }}
                   animate={tipHot ? { opacity: [0.5, 1, 0.5] } : { opacity: 1 }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}

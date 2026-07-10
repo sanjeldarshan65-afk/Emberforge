@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../state/store'
-import { useToast } from '../ui/Toast'
+import { useToast } from '../ui/toastContext'
 
 /* ================================================================
    VICTORY SCROLL — a shareable stone tablet for new records

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useGame } from '../state/store'
 
 /* Chrome/Edge/Android fire `beforeinstallprompt`; we stash it and
    offer our own themed install button. iOS never fires it, so we
@@ -19,7 +20,8 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 
 export default function InstallPrompt() {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null)
-  const [dismissed, setDismissed] = useState(false)
+  const dismissed = useGame((s) => s.installDismissed)
+  const dismissInstall = useGame((s) => s.dismissInstall)
   const [showIOSHint, setShowIOSHint] = useState(false)
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function InstallPrompt() {
               </button>
             )}
             <button
-              onClick={() => setDismissed(true)}
+              onClick={dismissInstall}
               aria-label="dismiss install prompt"
               className="min-h-10 min-w-10 shrink-0 text-faded hover:text-bone transition-colors"
             >

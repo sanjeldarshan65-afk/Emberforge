@@ -1,9 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Dashboard from './components/Dashboard'
-import CombatLog from './components/CombatLog'
-import RationsTracker from './components/RationsTracker'
-import FireKeeper from './components/FireKeeper'
 import BottomNav from './components/BottomNav'
 import type { TabId } from './components/BottomNav'
 import InstallPrompt from './pwa/InstallPrompt'
@@ -11,10 +7,19 @@ import Splash from './components/Splash'
 import SettingsSheet from './components/SettingsSheet'
 import RiteOfEmbers from './components/RiteOfEmbers'
 import { SigilWatcher } from './components/SigilVault'
-import TheCodex from './components/TheCodex'
 import { ToastProvider } from './ui/Toast'
 import { useGame, levelInfo, statusEffects } from './state/store'
 import { pick, EPIGRAPHS } from './ui/flavor'
+import { snapshotBackup } from './state/backup'
+import { APP_VERSION } from './version'
+
+/* Tab views are code-split — each loads as its own chunk only when first
+   opened, keeping the initial bundle small. */
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const CombatLog = lazy(() => import('./components/CombatLog'))
+const RationsTracker = lazy(() => import('./components/RationsTracker'))
+const FireKeeper = lazy(() => import('./components/FireKeeper'))
+const TheCodex = lazy(() => import('./components/TheCodex'))
 
 /* ---------- animation presets ---------- */
 const fadeUp = {
@@ -181,10 +186,18 @@ function Hub() {
   const applyStatusEffects = useGame((s) => s.applyStatusEffects)
   const { level, into, needed } = levelInfo(xp)
 
-  /* settle the curse's debt once per visit */
+  /* settle the curse's debt + take an automatic rolling backup once per visit */
   useEffect(() => {
     applyStatusEffects()
+    snapshotBackup(APP_VERSION)
   }, [applyStatusEffects])
+
+  /* an empty-widget CTA (or anything) can request a tab switch */
+  useEffect(() => {
+    const h = (e: Event) => setTab((e as CustomEvent<TabId>).detail)
+    window.addEventListener('emberforge:navigate', h)
+    return () => window.removeEventListener('emberforge:navigate', h)
+  }, [])
 
   return (
     <motion.div
@@ -255,17 +268,27 @@ function Hub() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
         >
-          {tab === 'sanctum' ? (
-            <Dashboard />
-          ) : tab === 'combat' ? (
-            <CombatLog />
-          ) : tab === 'rations' ? (
-            <RationsTracker />
-          ) : tab === 'keeper' ? (
-            <FireKeeper />
-          ) : (
-            <TheCodex />
-          )}
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-24">
+                <span className="font-display text-souls-dim text-xs tracking-[0.3em] uppercase animate-flicker">
+                  Kindling…
+                </span>
+              </div>
+            }
+          >
+            {tab === 'sanctum' ? (
+              <Dashboard />
+            ) : tab === 'combat' ? (
+              <CombatLog />
+            ) : tab === 'rations' ? (
+              <RationsTracker />
+            ) : tab === 'keeper' ? (
+              <FireKeeper />
+            ) : (
+              <TheCodex />
+            )}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
 

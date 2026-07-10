@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { levelInfo } from '../state/store'
 import type { BattleReward } from '../state/store'
 import type { ScrollData } from './VictoryScroll'
+import { getItem } from '../state/items'
+import type { Rarity } from '../state/items'
 
 /* ================================================================
    VICTORY OVERLAY — the boss-kill moment. Fires the instant a
@@ -20,6 +22,13 @@ export type Victory = {
 
 const asPct = (into: number, needed: number) =>
   Math.max(0, Math.min(100, (into / needed) * 100))
+
+const RARITY_COLOR: Record<Rarity, string> = {
+  legendary: 'var(--color-souls)',
+  rare: 'var(--color-humanity)',
+  uncommon: 'var(--color-verdant)',
+  common: 'var(--color-bone-dim)',
+}
 
 function Spoil({ label, value }: { label: string; value: string }) {
   return (
@@ -148,6 +157,38 @@ function VictoryInner({
             <span className="font-display text-[0.6rem] tracking-[0.2em] uppercase text-souls">
               New Personal Record
             </span>
+          </motion.div>
+        )}
+
+        {reward.drops.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.7 } }}
+            className="mt-4 border-t border-ash pt-3"
+          >
+            <div className="font-display text-[0.6rem] tracking-[0.25em] uppercase text-souls-dim mb-2">
+              Spoils Claimed
+            </div>
+            <div className="space-y-1.5">
+              {reward.drops.map((id) => {
+                const item = getItem(id)
+                if (!item) return null
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center justify-between gap-2 px-3 py-1.5 bg-iron border"
+                    style={{ borderColor: RARITY_COLOR[item.rarity] }}
+                  >
+                    <span className="font-display text-sm tracking-wide" style={{ color: RARITY_COLOR[item.rarity] }}>
+                      &#10022; {item.name}
+                    </span>
+                    <span className="font-ui text-[0.55rem] tracking-[0.2em] uppercase text-faded">
+                      {item.rarity}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </motion.div>
         )}
 

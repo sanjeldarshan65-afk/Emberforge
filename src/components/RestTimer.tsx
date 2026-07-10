@@ -12,7 +12,13 @@ const DEFAULT_MS = 90_000
 const R = 44
 const CIRC = 2 * Math.PI * R
 
-export default function RestTimer({ trigger }: { trigger: number }) {
+export default function RestTimer({
+  trigger,
+  onOpenChange,
+}: {
+  trigger: number
+  onOpenChange?: (open: boolean) => void
+}) {
   const restSeconds = useGame((s) => s.settings.restSeconds)
   const vibration = useGame((s) => s.settings.vibration)
   const hollowed = useGame((s) => s.settings.hollowed)
@@ -63,6 +69,10 @@ export default function RestTimer({ trigger }: { trigger: number }) {
   }
 
   const open = endAt !== null
+  /* let the battle screen reserve space so this top banner never covers the set controls */
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
   const frac = open ? Math.max(0, Math.min(remainingMs / totalMs, 1)) : 0
   const secs = Math.ceil(remainingMs / 1000)
   const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`

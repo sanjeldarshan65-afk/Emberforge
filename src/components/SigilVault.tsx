@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useGame, levelInfo, todayKey } from '../state/store'
 import { SIGILS, maxStreak } from '../state/sigils'
 import type { SigilCtx } from '../state/sigils'
-import { useToast } from '../ui/Toast'
+import { useToast } from '../ui/toastContext'
 
 /* ================================================================
    SIGILS OF THE FORGE — the trophy vault + unlock watcher

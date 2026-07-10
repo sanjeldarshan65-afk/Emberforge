@@ -48,6 +48,11 @@ export default function TheCodex() {
         aria-label="search exercises"
       />
 
+      <p className="font-ui text-[0.58rem] text-faded -mt-2">
+        Each rite shows the heatmap regions it kindles — <span className="text-ember">bright</span> is
+        primary, faded assists.
+      </p>
+
       {/* category filters */}
       <div className="flex gap-1.5 flex-wrap">
         {FILTERS.map((c) => (
@@ -77,9 +82,32 @@ export default function TheCodex() {
               onClick={() => setOpenEntry(e)}
               className="panel p-4 text-left min-h-20"
             >
-              <div className="font-display text-bone text-sm tracking-wider">{e.name}</div>
-              <div className="font-ui text-[0.65rem] text-faded mt-1">
-                {e.category} &middot; {e.primary.join(', ')}
+              <div className="font-display text-bone text-sm tracking-wider">
+                {e.name}
+                {e.compound && (
+                  <span className="ml-1.5 text-[0.5rem] tracking-[0.2em] text-souls-dim align-middle">
+                    &#9670;
+                  </span>
+                )}
+              </div>
+              <div className="font-ui text-[0.65rem] text-faded mt-1">{e.category}</div>
+              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                {e.heat.primary.map((g) => (
+                  <span
+                    key={`p-${g}`}
+                    className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ember/50 text-ember"
+                  >
+                    {g}
+                  </span>
+                ))}
+                {e.heat.secondary.map((g) => (
+                  <span
+                    key={`s-${g}`}
+                    className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ash text-faded"
+                  >
+                    {g}
+                  </span>
+                ))}
               </div>
             </motion.button>
           ))}
@@ -152,6 +180,29 @@ export default function TheCodex() {
                 {openEntry.secondary.map((m) => (
                   <span key={m} className="px-2 py-1 border border-ash text-bone-dim font-ui text-[0.65rem]">
                     {m}
+                  </span>
+                ))}
+              </div>
+
+              {/* which regions of the Vessel's heatmap this rite lights */}
+              <div className="flex items-center gap-1.5 flex-wrap -mt-2 mb-4">
+                <span className="font-display text-[0.55rem] tracking-[0.25em] uppercase text-souls-dim">
+                  Kindles
+                </span>
+                {openEntry.heat.primary.map((g) => (
+                  <span
+                    key={`hp-${g}`}
+                    className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ember/50 text-ember"
+                  >
+                    {g}
+                  </span>
+                ))}
+                {openEntry.heat.secondary.map((g) => (
+                  <span
+                    key={`hs-${g}`}
+                    className="font-ui text-[0.5rem] tracking-[0.12em] uppercase px-1.5 py-0.5 border border-ash text-faded"
+                  >
+                    {g}
                   </span>
                 ))}
               </div>

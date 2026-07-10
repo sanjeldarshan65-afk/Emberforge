@@ -2,7 +2,20 @@ import { useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, DEFAULT_SETTINGS } from '../state/store'
 import { APP_VERSION } from '../version'
-import { useToast } from '../ui/Toast'
+import { useToast } from '../ui/toastContext'
+import { useModalDismiss } from '../ui/useModalDismiss'
+import {
+  buildExport,
+  parseImport,
+  applySave,
+  listBackups,
+  restoreBackup,
+  markExported,
+  needsExportReminder,
+} from '../state/backup'
+import { encryptText, decryptText, isEncryptedBackup } from '../state/crypto'
+import { pushToCloud, pullFromCloud } from '../state/cloudSync'
+import { buildDemoState } from '../state/demoData'
 import type { Macros } from '../state/store'
 
 /* ================================================================
@@ -51,45 +64,122 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 export default function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useModalDismiss(open, onClose)
   const settings = useGame((s) => s.settings)
   const updateSettings = useGame((s) => s.updateSettings)
   const macroGoals = useGame((s) => s.macroGoals)
   const setMacroGoal = useGame((s) => s.setMacroGoal)
+  const applyDemo = useGame((s) => s.applyDemo)
+  const demoActive = useGame((s) => s.demoActive)
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const exportSave = () => {
-    const raw = localStorage.getItem('emberforge-save')
-    if (!raw) {
-      toast('No save yet exists to preserve', 'blood')
-      return
-    }
-    const blob = new Blob([raw], { type: 'application/json' })
+  const download = (contents: string, ext: string) => {
+    const blob = new Blob([contents], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `emberforge-save-${new Date().toLocaleDateString('en-CA')}.json`
+    a.download = `emberforge-${new Date().toLocaleDateString('en-CA')}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
-    toast('Thy legend is preserved', 'souls')
   }
 
-  const importSave = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const text = String(reader.result)
-        const parsed: unknown = JSON.parse(text)
-        if (!parsed || typeof parsed !== 'object' || !('state' in parsed)) throw new Error('invalid')
-        if (!window.confirm('Restore this legend? Thy current progress will be replaced.')) return
-        localStorage.setItem('emberforge-save', text)
-        window.location.reload()
-      } catch {
-        toast('These ashes are no true save', 'blood')
+  const exportSave = async (encrypted: boolean) => {
+    try {
+      let contents = buildExport(APP_VERSION)
+      let ext = 'json'
+      if (encrypted) {
+        const pass = window.prompt(
+          'Choose a passphrase to seal this backup. Thou wilt need it to restore — it cannot be recovered.'
+        )
+        if (!pass) return
+        contents = await encryptText(contents, pass)
+        ext = 'enc.json'
       }
+      download(contents, ext)
+      markExported()
+      toast(encrypted ? 'Thy legend is sealed and preserved' : 'Thy legend is preserved', 'souls')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'The rite of preservation failed', 'blood')
     }
-    reader.readAsText(file)
   }
+
+  const importSave = async (file: File) => {
+    try {
+      const text = await file.text()
+      let saveText = text
+      if (isEncryptedBackup(text)) {
+        const pass = window.prompt('This backup is sealed. Enter its passphrase to restore.')
+        if (!pass) return
+        saveText = await decryptText(text, pass)
+      }
+      const saveString = parseImport(saveText)
+      if (!window.confirm('Restore this legend? Thy current progress will be replaced.')) return
+      applySave(saveString)
+      window.location.reload()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'These ashes are no true save', 'blood')
+    }
+  }
+
+  const restoreLocalBackup = (id: string, at: number) => {
+    if (
+      !window.confirm(
+        `Roll back to the snapshot from ${new Date(at).toLocaleString()}? Current progress will be replaced.`
+      )
+    )
+      return
+    if (restoreBackup(id)) window.location.reload()
+    else toast('That snapshot could not be found', 'blood')
+  }
+
+  const cloudPush = async () => {
+    const pass = window.prompt('Passphrase to encrypt this sync (never stored, never sent):')
+    if (!pass) return
+    try {
+      await pushToCloud(settings.cloudEndpoint, pass, APP_VERSION)
+      toast('Thy legend is synced, sealed in cipher', 'souls')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'The sync failed', 'blood')
+    }
+  }
+
+  const cloudPull = async () => {
+    const pass = window.prompt('Passphrase to unseal the cloud backup:')
+    if (!pass) return
+    if (!window.confirm('Pull the cloud backup? Thy current progress will be replaced.')) return
+    try {
+      await pullFromCloud(settings.cloudEndpoint, pass)
+      window.location.reload()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'The pull failed', 'blood')
+    }
+  }
+
+  const lightFirstFlame = () => {
+    if (
+      !window.confirm(
+        'Light the First Flame? This fills the app with ~4 weeks of sample data so thou canst see it fully alive. Thy real save is kept safe and restored when thou dost clear the demo.'
+      )
+    )
+      return
+    localStorage.setItem('emberforge-predemo', localStorage.getItem('emberforge-save') ?? '')
+    applyDemo(buildDemoState())
+    toast('The First Flame is lit — a sample legend fills the ash', 'souls')
+    onClose()
+  }
+
+  const clearDemo = () => {
+    if (!window.confirm('Clear the demo and restore thy true save?')) return
+    const pre = localStorage.getItem('emberforge-predemo')
+    if (pre) localStorage.setItem('emberforge-save', pre)
+    else localStorage.removeItem('emberforge-save')
+    localStorage.removeItem('emberforge-predemo')
+    window.location.reload()
+  }
+
+  const backups = listBackups()
+  const showExportReminder = needsExportReminder()
 
   const setUnits = (u: 'lb' | 'kg') => {
     if (u === settings.units) return
@@ -118,6 +208,9 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Settings"
             className="absolute bottom-0 inset-x-0 max-h-[88vh] overflow-y-auto border-t border-souls-dim/50 bg-void/80 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),1.25rem)]"
           >
             <div className="max-w-2xl mx-auto px-5 pt-5">
@@ -263,15 +356,54 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
                 </Row>
               ))}
 
+              {/* ============ LIGHT THE FIRST FLAME (demo mode) ============ */}
+              <h3 className="font-display text-souls text-[0.7rem] tracking-[0.25em] uppercase mt-6 mb-1">
+                Light the First Flame
+              </h3>
+              {demoActive ? (
+                <Row label="Demo data is lit" hint="a sample legend — not thy true record">
+                  <button
+                    onClick={clearDemo}
+                    className="min-h-10 px-4 font-display text-[0.6rem] tracking-[0.18em] uppercase border border-blood-bright/70 text-blood-bright hover:bg-blood/30 transition-colors"
+                  >
+                    Clear Demo
+                  </button>
+                </Row>
+              ) : (
+                <Row label="See the app fully alive" hint="seed ~4 weeks of sample battles, meals &amp; weigh-ins">
+                  <button onClick={lightFirstFlame} className="btn-ember min-h-10 px-4 text-[0.6rem]">
+                    Light It
+                  </button>
+                </Row>
+              )}
+
               {/* ============ THE DARK SIGN ============ */}
               <h3 className="font-display text-blood-bright text-[0.7rem] tracking-[0.25em] uppercase mt-6 mb-1">
                 The Dark Sign
               </h3>
 
-              <Row label="Preserve thy save" hint="download thy legend as a file">
-                <button onClick={exportSave} className="btn-hollow min-h-10 px-4 text-[0.6rem]">
-                  Export
-                </button>
+              {showExportReminder && (
+                <p className="font-ui text-[0.62rem] text-glow-ember italic mb-2">
+                  It has been a while since thy last export. Keep an off-device copy — a cleared
+                  cache spares nothing.
+                </p>
+              )}
+
+              <Row label="Preserve thy save" hint="download — plain, or sealed with a passphrase">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportSave(false)}
+                    className="btn-hollow min-h-10 px-4 text-[0.6rem]"
+                  >
+                    Export
+                  </button>
+                  <button
+                    onClick={() => exportSave(true)}
+                    className="btn-hollow min-h-10 px-3 text-[0.6rem]"
+                  >
+                    Encrypted
+                  </button>
+                </div>
               </Row>
 
               <Row label="Restore from ashes" hint="load a previously preserved save">
@@ -295,6 +427,75 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
                   </button>
                 </>
               </Row>
+
+              {/* ---- automatic local snapshots ---- */}
+              {backups.length > 0 && (
+                <div className="mt-4">
+                  <div className="font-ui text-[0.6rem] tracking-[0.2em] uppercase text-faded mb-2">
+                    Local Snapshots &middot; taken automatically
+                  </div>
+                  <div className="space-y-1.5">
+                    {backups.map((b) => (
+                      <div key={b.id} className="flex items-center justify-between panel px-3 py-2">
+                        <div className="font-ui text-xs text-bone-dim">
+                          {new Date(b.at).toLocaleString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          <span className="text-faded">
+                            {' '}
+                            &middot; {Math.max(1, Math.round(b.bytes / 1024))} KB
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => restoreLocalBackup(b.id, b.at)}
+                          className="btn-hollow min-h-9 px-3 text-[0.55rem]"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="font-ui text-[0.58rem] text-faded italic mt-1.5">
+                    Snapshots live on this device only — they survive a bad state, not a cleared cache.
+                  </p>
+                </div>
+              )}
+
+              {/* ---- optional encrypted cloud sync (opt-in; off by default) ---- */}
+              <h3 className="font-display text-humanity text-[0.7rem] tracking-[0.25em] uppercase mt-6 mb-1">
+                Cloud Sync &middot; Experimental
+              </h3>
+              <p className="font-ui text-[0.62rem] text-faded leading-relaxed mb-3">
+                Off by default — thy save never leaves this device unless thou set an endpoint. When
+                set, the backup is encrypted in thy browser with a passphrase before sending; the
+                endpoint stores only ciphertext, and the passphrase is never stored nor sent.
+              </p>
+              <input
+                type="url"
+                inputMode="url"
+                placeholder="https://your-endpoint/… (blank = off)"
+                value={settings.cloudEndpoint ?? ''}
+                onChange={(e) => updateSettings({ cloudEndpoint: e.target.value.trim() })}
+                className="input-dark min-h-11 text-xs mb-2"
+                aria-label="cloud sync endpoint URL"
+              />
+              {settings.cloudEndpoint ? (
+                <div className="flex gap-2">
+                  <button onClick={cloudPush} className="btn-hollow flex-1 min-h-11 text-[0.6rem]">
+                    Sync Up
+                  </button>
+                  <button onClick={cloudPull} className="btn-hollow flex-1 min-h-11 text-[0.6rem]">
+                    Restore Down
+                  </button>
+                </div>
+              ) : (
+                <p className="font-ui text-[0.6rem] text-faded italic">
+                  No endpoint set — cloud sync is disabled.
+                </p>
+              )}
 
               <Row label="Restore defaults" hint="settings only — progress is untouched">
                 <button

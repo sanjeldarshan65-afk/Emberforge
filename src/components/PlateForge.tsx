@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../state/store'
+import { useModalDismiss } from '../ui/useModalDismiss'
 
 /* ================================================================
    PLATE BLACKSMITH — which plates make the bar?
@@ -40,6 +41,32 @@ function solve(target: number, bar: number, plates: PlateSpec[]) {
   return { loaded, remainder: perSide * 2 }
 }
 
+type WarmRung = { weight: number; reps: number }
+
+/** a sensible warm-up ramp toward a working weight, rounded to loadable steps.
+    Light working weights collapse to fewer rungs; returns [] at or below the bar. */
+function warmupRamp(working: number, bar: number, unit: 'lb' | 'kg'): WarmRung[] {
+  const step = unit === 'kg' ? 2.5 : 5
+  const round = (w: number) => Math.round(w / step) * step
+  const rungs: { pct: number; reps: number }[] = [
+    { pct: 0, reps: 8 }, // the empty bar
+    { pct: 0.4, reps: 5 },
+    { pct: 0.55, reps: 4 },
+    { pct: 0.7, reps: 3 },
+    { pct: 0.85, reps: 2 },
+  ]
+  const out: WarmRung[] = []
+  let last = -1
+  for (const r of rungs) {
+    let w = r.pct === 0 ? bar : round(working * r.pct)
+    if (w < bar) w = bar
+    if (w >= working || w === last) continue // never meet/exceed the work set; no duplicates
+    out.push({ weight: w, reps: r.reps })
+    last = w
+  }
+  return out
+}
+
 export default function PlateForge({
   weight,
   onClose,
@@ -47,12 +74,14 @@ export default function PlateForge({
   weight: number | null
   onClose: () => void
 }) {
+  useModalDismiss(weight !== null, onClose)
   const units = useGame((s) => s.settings.units)
   const bar = useGame((s) => s.settings.barWeight)
   const plates = units === 'kg' ? KG_PLATES : LB_PLATES
 
   const open = weight !== null && weight > bar
   const { loaded, remainder } = open ? solve(weight, bar, plates) : { loaded: [], remainder: 0 }
+  const ramp = weight !== null ? warmupRamp(weight, bar, units) : []
 
   /* tally for the written recipe */
   const tally = loaded.reduce<Record<number, number>>((t, p) => {
@@ -84,6 +113,9 @@ export default function PlateForge({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 340, damping: 34 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Plate Calculator"
             className="absolute bottom-0 inset-x-0 border-t border-souls-dim/50 bg-void/75 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),1rem)]"
           >
             <div className="max-w-2xl mx-auto px-5 pt-5">
@@ -152,6 +184,27 @@ export default function PlateForge({
                 <p className="text-glow-ember font-ui text-xs text-center mt-1">
                   {remainder.toFixed(1)} {units} cannot be forged — nearest load shown
                 </p>
+              )}
+
+              {/* warm-up ramp — how to climb toward this working weight */}
+              {ramp.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-ash">
+                  <div className="font-display text-[0.6rem] tracking-[0.25em] uppercase text-souls-dim mb-2 text-center">
+                    Warm-up Ramp
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-ui text-xs">
+                    {ramp.map((r, i) => (
+                      <span key={i} className="text-bone-dim whitespace-nowrap">
+                        {r.weight}
+                        <span className="text-faded"> &times; {r.reps}</span>
+                        <span className="text-stone"> &rarr;</span>
+                      </span>
+                    ))}
+                    <span className="text-souls whitespace-nowrap">
+                      {weight} <span className="text-souls-dim">&times; work</span>
+                    </span>
+                  </div>
+                </div>
               )}
 
               <button onClick={onClose} className="btn-hollow w-full min-h-12 mt-4 mb-2">
