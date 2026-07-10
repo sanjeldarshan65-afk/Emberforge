@@ -199,6 +199,7 @@ type GameState = {
   installDismissed: boolean
   inventory: OwnedItem[]
   claimedQuests: string[]
+  claimedSeasons: string[]
   bossesDefeated: string[]
   unlockedNodes: string[]
   ascensionLevel: number
@@ -215,6 +216,7 @@ type GameState = {
   grantItem: (id: string) => void
   buyItem: (id: string, price: number) => boolean
   claimQuest: (id: string, souls: number, itemReward?: string) => void
+  claimSeason: (id: string, souls: number) => void
   defeatBoss: (id: string, souls: number, trophy?: string) => void
   unlockNode: (id: string, cost: number) => boolean
   ascend: () => boolean
@@ -259,6 +261,7 @@ export const useGame = create<GameState>()(
         { id: 'tarnished-coin', qty: 1, acquiredDate: new Date().toISOString() },
       ],
       claimedQuests: [],
+      claimedSeasons: [],
       bossesDefeated: [],
       unlockedNodes: [],
       ascensionLevel: 0,
@@ -458,6 +461,13 @@ export const useGame = create<GameState>()(
         if (s.claimedQuests.includes(id)) return
         if (itemReward) s.grantItem(itemReward)
         set((st) => ({ souls: st.souls + souls, claimedQuests: [...st.claimedQuests, id] }))
+      },
+
+      /* The Rite of the Season — claim the quarter's trial once it's met, once per season id */
+      claimSeason: (id, souls) => {
+        const s = get()
+        if (s.claimedSeasons.includes(id)) return
+        set((st) => ({ souls: st.souls + souls, claimedSeasons: [...st.claimedSeasons, id] }))
       },
 
       /* Boss Encounters — fell a challenge lift: bonus souls + trophy via the loot path, once */

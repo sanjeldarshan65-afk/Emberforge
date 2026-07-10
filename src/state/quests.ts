@@ -62,6 +62,32 @@ export function questProgress(o: QuestObjective, ctx: QuestContext): number {
 export const isComplete = (o: QuestObjective, ctx: QuestContext): boolean =>
   questProgress(o, ctx) >= o.target
 
+export type QuestRow = {
+  q: Quest
+  progress: number
+  target: number
+  complete: boolean
+  claimed: boolean
+  pct: number
+}
+
+/** every quest, with live progress, sorted claimable-first then most-progressed —
+    the single ordering used by both the Covenants list and the Trials hero card */
+export function questRows(ctx: QuestContext, claimedQuests: string[]): QuestRow[] {
+  const rank = (complete: boolean, claimed: boolean) => (claimed ? 2 : complete ? 0 : 1)
+  return QUESTS.map((q) => {
+    const progress = questProgress(q.objective, ctx)
+    const target = questTarget(q.objective)
+    const complete = progress >= target
+    const claimed = claimedQuests.includes(q.id)
+    const pct = Math.max(0, Math.min(100, (progress / target) * 100))
+    return { q, progress, target, complete, claimed, pct }
+  }).sort((a, b) => {
+    const dr = rank(a.complete, a.claimed) - rank(b.complete, b.claimed)
+    return dr !== 0 ? dr : b.pct - a.pct
+  })
+}
+
 /** number of distinct days whose logged calories met (or beat) the goal */
 export const macroDaysMet = (
   rations: { date: string; calories: number }[],

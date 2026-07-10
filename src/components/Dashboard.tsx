@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGame, statusEffects, ASCEND_MULT, CURSE_DRAIN, epley } from '../state/store'
+import { useGame, statusEffects, ASCEND_MULT, CURSE_DRAIN, epley, levelInfo } from '../state/store'
 import type { Battle, Vitals } from '../state/store'
 import { fatigueWithRelics } from '../state/recovery'
 import Avatar from './Avatar'
@@ -13,12 +13,16 @@ import WeightLedger from './WeightLedger'
 import { CONSTELLATION } from '../state/constellation'
 import { ITEMS } from '../state/items'
 import { QUESTS } from '../state/quests'
+import { rankForLevel } from '../state/ranks'
+import TrialsHero from './TrialsHero'
+import SeasonalTrial from './SeasonalTrial'
 
 /* heavy modals — code-split so their chunks load on first open, not with the Sanctum */
 const TheHoard = lazy(() => import('./TheHoard'))
 const TheCovenants = lazy(() => import('./TheCovenants'))
 const Constellation = lazy(() => import('./Constellation'))
 const RiteOfAscension = lazy(() => import('./RiteOfAscension'))
+const RanksLadder = lazy(() => import('./RanksLadder'))
 
 /* ---------- animation presets ---------- */
 const fadeUp = {
@@ -53,21 +57,26 @@ export default function Dashboard() {
   const [covenantsOpen, setCovenantsOpen] = useState(false)
   const [constellationOpen, setConstellationOpen] = useState(false)
   const [riteOpen, setRiteOpen] = useState(false)
+  const [ranksOpen, setRanksOpen] = useState(false)
   /* code-split latches: mount a heavy modal only after its first open — this defers its
      chunk until needed, and (unlike gating on `open`) keeps it mounted so exit animations play */
   const hoardEver = useRef(false)
   const covenantsEver = useRef(false)
   const constellationEver = useRef(false)
   const riteEver = useRef(false)
+  const ranksEver = useRef(false)
   if (hoardOpen) hoardEver.current = true
   if (covenantsOpen) covenantsEver.current = true
   if (constellationOpen) constellationEver.current = true
   if (riteOpen) riteEver.current = true
+  if (ranksOpen) ranksEver.current = true
   const inventory = useGame((s) => s.inventory)
   const claimedQuests = useGame((s) => s.claimedQuests)
   const unlockedNodes = useGame((s) => s.unlockedNodes)
   const ascensionLevel = useGame((s) => s.ascensionLevel)
   const demoActive = useGame((s) => s.demoActive)
+  const xp = useGame((s) => s.xp)
+  const rank = rankForLevel(levelInfo(xp).level)
 
   const { streak, daysSinceLast, ascended, cursed } = statusEffects(battles)
   /* muscle-heat = battle history + fatigueRecovery relics (Hoard) + Constellation nodes */
@@ -113,6 +122,18 @@ export default function Dashboard() {
           </span>
         </motion.div>
       )}
+
+      {/* ============ RITE OF THE SEASON ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">Rite of the Season</div>
+        <SeasonalTrial />
+      </motion.section>
+
+      {/* ============ TRIALS ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">Trials</div>
+        <TrialsHero onOpenAll={() => setCovenantsOpen(true)} />
+      </motion.section>
 
       {/* ============ STATUS EFFECTS ============ */}
       <AnimatePresence initial={false}>
@@ -408,6 +429,45 @@ export default function Dashboard() {
       {hoardEver.current && (
         <Suspense fallback={null}>
           <TheHoard open={hoardOpen} onClose={() => setHoardOpen(false)} />
+        </Suspense>
+      )}
+
+      {/* ============ THE RANKS ============ */}
+      <motion.section variants={fadeUp}>
+        <div className="divider-ornate mb-4">The Ranks</div>
+        <button
+          onClick={() => setRanksOpen(true)}
+          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0"
+              style={{
+                borderColor: rank.color,
+                color: rank.color,
+                boxShadow: `0 0 10px ${rank.color}55`,
+              }}
+            >
+              <span className="text-sm leading-none">{rank.glyph}</span>
+            </div>
+            <div>
+              <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">
+                Climb the Ranks
+              </div>
+              <div className="font-ui text-xs text-bone-dim mt-0.5">
+                Current standing among the ashen
+              </div>
+            </div>
+          </div>
+          <span className="font-display text-sm shrink-0" style={{ color: rank.color }}>
+            {rank.name}
+          </span>
+        </button>
+      </motion.section>
+
+      {ranksEver.current && (
+        <Suspense fallback={null}>
+          <RanksLadder open={ranksOpen} onClose={() => setRanksOpen(false)} />
         </Suspense>
       )}
 

@@ -1,18 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <radialGradient id="warm" cx="50%" cy="46%" r="62%">
-      <stop offset="0%" stop-color="#211711"/><stop offset="100%" stop-color="#0a0806"/>
+      <stop offset="0%" stop-color="#241811"/><stop offset="100%" stop-color="#0a0806"/>
     </radialGradient>
-    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffcf8a"/><stop offset="18%" stop-color="#ffa04d"/><stop offset="42%" stop-color="#ff7518"/><stop offset="72%" stop-color="#d1490a"/><stop offset="100%" stop-color="#7f2c04"/></linearGradient>
-    <linearGradient id="core"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff4d6"/><stop offset="30%" stop-color="#ffdf86"/><stop offset="60%" stop-color="#f3b23e"/><stop offset="100%" stop-color="#de7f16"/></linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="26"/>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffcf8a"/>
+      <stop offset="20%" stop-color="#ffa04d"/>
+      <stop offset="46%" stop-color="#ff7518"/>
+      <stop offset="75%" stop-color="#d1490a"/>
+      <stop offset="100%" stop-color="#7f2c04"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffaf0"/>
+      <stop offset="32%" stop-color="#ffe6a3"/>
+      <stop offset="65%" stop-color="#f8b84a"/>
+      <stop offset="100%" stop-color="#e08a1e"/>
+    </linearGradient>
+    <radialGradient id="hot" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#fffdf7"/>
+      <stop offset="55%" stop-color="#fff2cf"/>
+      <stop offset="100%" stop-color="#ffdf9a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
     </filter>
+    <path id="flameOuter" d="M240 90
+      C 253 82 259 82 272 90
+      C 292 122 305 152 318.32 211.24
+      C 333.24 251.61 340.26 289.35 325.34 332.36
+      C 314 368 297 402 268 424
+      C 264 428 260 430 256 431
+      C 252 430 248 428 244 424
+      C 215 402 198 368 186.66 332.36
+      C 171.74 289.35 178.76 251.61 193.68 211.24
+      C 207 152 220 122 240 90 Z"/>
+    <path id="flameCore" d="M246 190
+      C 251 183 261 183 266 190
+      C 278 206 286 228 290.27 254.09
+      C 298.48 276.30 302.34 297.06 294.14 320.71
+      C 288 340 278 360 262 373
+      C 260 375 258 376.5 256 377.5
+      C 254 376.5 252 375 250 373
+      C 234 360 224 340 217.86 320.71
+      C 209.66 297.06 213.52 276.30 221.73 254.09
+      C 226 228 234 206 246 190 Z"/>
   </defs>
+
   <rect width="512" height="512" fill="#0a0806"/>
   <rect width="512" height="512" fill="url(#warm)"/>
-  <path d="M256.00 71.68 C280.58 106.79 305.15 151.55 318.32 211.24 C333.24 251.61 340.26 289.35 325.34 332.36 C312.17 374.49 291.11 417.50 256.00 440.32 C220.89 417.50 199.83 374.49 186.66 332.36 C171.74 289.35 178.76 251.61 193.68 211.24 C206.85 151.55 231.42 106.79 256.00 71.68 Z" fill="#ff7518" opacity="0.55" filter="url(#glow)"/>
-  <path d="M256.00 71.68 C280.58 106.79 305.15 151.55 318.32 211.24 C333.24 251.61 340.26 289.35 325.34 332.36 C312.17 374.49 291.11 417.50 256.00 440.32 C220.89 417.50 199.83 374.49 186.66 332.36 C171.74 289.35 178.76 251.61 193.68 211.24 C206.85 151.55 231.42 106.79 256.00 71.68 Z" fill="url(#flame)"/>
-  <path d="M256.00 177.33 C269.52 196.64 283.03 221.26 290.27 254.09 C298.48 276.30 302.34 297.06 294.14 320.71 C286.90 343.88 275.31 367.54 256.00 380.09 C236.69 367.54 225.10 343.88 217.86 320.71 C209.66 297.06 213.52 276.30 221.73 254.09 C228.97 221.26 242.48 196.64 256.00 177.33 Z"  fill="url(#core)"/>
-  <path d="M256.00 231.34 C263.86 242.57 271.73 256.90 275.94 275.99 C280.72 288.91 282.96 300.99 278.19 314.75 C273.98 328.24 267.23 342.00 256.00 349.30 C244.77 342.00 238.02 328.24 233.81 314.75 C229.04 300.99 231.28 288.91 236.06 275.99 C240.27 256.90 248.14 242.57 256.00 231.34 Z" fill="#fff4d6" opacity="0.9" filter="url(#glow)"/>
+
+  <!-- outer aura — a soft halo, fully covered by the crisp body above it so
+       the blur only ever shows OUTSIDE the silhouette, never blended within it -->
+  <use href="#flameOuter" fill="#ff8a2e" opacity="0.5" filter="url(#glow)"/>
+
+  <!-- crisp flame body -->
+  <use href="#flameOuter" fill="url(#flame)"/>
+
+  <!-- crisp inner core -->
+  <use href="#flameCore" fill="url(#core)"/>
+
+  <!-- solid hot-spot highlight — no blur, so no muddy edge blending -->
+  <ellipse cx="256" cy="300" rx="30" ry="46" fill="url(#hot)"/>
 </svg>

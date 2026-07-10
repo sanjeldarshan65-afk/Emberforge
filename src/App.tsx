@@ -9,6 +9,7 @@ import RiteOfEmbers from './components/RiteOfEmbers'
 import { SigilWatcher } from './components/SigilVault'
 import { ToastProvider } from './ui/Toast'
 import { useGame, levelInfo, statusEffects } from './state/store'
+import { rankForLevel } from './state/ranks'
 import { pick, EPIGRAPHS } from './ui/flavor'
 import { snapshotBackup } from './state/backup'
 import { APP_VERSION } from './version'
@@ -175,6 +176,13 @@ const AshenIcon = () => (
   </svg>
 )
 
+/* the streak counter's ember — solid, small, always burning (even at zero) */
+const StreakFlameIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+    <path d="M12 2.6c1.1 3.3 4.6 5.3 4.6 9.7a4.6 4.6 0 0 1-9.2 0c0-2.5 1.5-3.8 2.1-6a3 3 0 0 0 1.9 1.6c1.1-1.4.9-3.6.6-5.3Z" />
+  </svg>
+)
+
 function Hub() {
   const [tab, setTab] = useState<TabId>('sanctum')
   const [showSettings, setShowSettings] = useState(false)
@@ -184,7 +192,10 @@ function Hub() {
   const hollowed = useGame((s) => s.settings.hollowed)
   const updateSettings = useGame((s) => s.updateSettings)
   const applyStatusEffects = useGame((s) => s.applyStatusEffects)
+  const battles = useGame((s) => s.battles)
   const { level, into, needed } = levelInfo(xp)
+  const rank = rankForLevel(level)
+  const { streak } = statusEffects(battles)
 
   /* settle the curse's debt + take an automatic rolling backup once per visit */
   useEffect(() => {
@@ -207,21 +218,16 @@ function Hub() {
       style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top))' }}
       className="min-h-screen max-w-2xl mx-auto px-4 pb-32"
     >
-      {/* header */}
+      {/* header — status bar: identity row, then rank / streak / souls, then the XP bar */}
       <header className="mb-6">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-souls text-xl tracking-[0.25em]">EMBERFORGE</h1>
-          <span className="font-ui text-xs text-bone-dim">
-            {profile && <span className="text-bone-dim">{profile.name} </span>}
-            Lv <span className="text-souls font-semibold">{level}</span>
-            <span className="text-faded"> &middot; </span>
-            <span className="text-souls">&#9737;</span>{' '}
-            <span className="text-souls font-semibold">{souls.toLocaleString()}</span>
+          <div className="flex items-center">
             <button
               onClick={() => updateSettings({ hollowed: !hollowed })}
               aria-pressed={hollowed}
               aria-label={hollowed ? 'kindle the flame — leave Hollowed Mode' : 'go hollow — dim the world to ash'}
-              className={`ml-2 min-h-10 min-w-10 inline-flex items-center justify-center align-middle transition-colors ${
+              className={`min-h-10 min-w-10 inline-flex items-center justify-center align-middle transition-colors ${
                 hollowed ? 'text-humanity hover:text-bone' : 'text-ember hover:text-ember-bright'
               }`}
             >
@@ -241,12 +247,42 @@ function Hub() {
             <button
               onClick={() => setShowSettings(true)}
               aria-label="open settings"
-              className="ml-1 min-h-10 min-w-10 inline-flex items-center justify-center align-middle text-bone-dim hover:text-souls transition-colors"
+              className="min-h-10 min-w-10 inline-flex items-center justify-center align-middle text-bone-dim hover:text-souls transition-colors"
             >
               <GearIcon />
             </button>
+          </div>
+        </div>
+
+        {profile && (
+          <div className="font-ui text-[0.65rem] text-bone-dim -mt-1 mb-2">{profile.name}</div>
+        )}
+
+        {/* status strip — rank, streak, souls */}
+        <div className="flex items-center gap-4 font-ui text-xs">
+          <span className="inline-flex items-center gap-1.5" title={rank.name}>
+            <span className="leading-none" style={{ color: rank.color }}>
+              {rank.glyph}
+            </span>
+            <span className="text-bone-dim">
+              Lv <span className="text-souls font-semibold">{level}</span>
+            </span>
+          </span>
+
+          <span
+            className={`inline-flex items-center gap-1 ${streak > 0 ? 'text-ember-bright' : 'text-faded'}`}
+            title={streak > 0 ? `${streak}-day streak` : 'no streak yet — return tomorrow to kindle one'}
+          >
+            <StreakFlameIcon />
+            <span className="font-semibold">{streak}</span>
+          </span>
+
+          <span className="inline-flex items-center gap-1 text-souls">
+            <span className="leading-none">&#9737;</span>
+            <span className="font-semibold">{souls.toLocaleString()}</span>
           </span>
         </div>
+
         {/* XP toward next level */}
         <div className="mt-2 h-1 bg-abyss border border-ash overflow-hidden">
           <div

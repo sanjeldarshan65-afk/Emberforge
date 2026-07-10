@@ -32,9 +32,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={push}>
       {children}
 
-      {/* the drop zone — slides in from the top, stacks, fades away */}
+      {/* the drop zone — slides in from the top, stacks, fades away.
+          Cleared below the Hub header (title, status strip, XP bar) so a toast
+          never covers the settings/hollow-mode buttons or the EMBERFORGE title. */}
       <div
-        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        style={{ paddingTop: 'calc(8.5rem + env(safe-area-inset-top))' }}
         className="fixed top-0 inset-x-0 z-[70] flex flex-col items-center gap-2 px-4 pointer-events-none"
       >
         <AnimatePresence>

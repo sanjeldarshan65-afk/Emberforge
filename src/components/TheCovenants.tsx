@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, levelInfo, statusEffects } from '../state/store'
-import { QUESTS, questProgress, questTarget, macroDaysMet } from '../state/quests'
+import { questRows, macroDaysMet } from '../state/quests'
 import type { Quest, QuestCategory, QuestContext } from '../state/quests'
 import { getItem } from '../state/items'
 import { useModalDismiss } from '../ui/useModalDismiss'
@@ -44,20 +44,7 @@ export default function TheCovenants({ open, onClose }: { open: boolean; onClose
     [xp, prs, battles, rations, macroGoals, vitals]
   )
 
-  const rows = useMemo(() => {
-    const rank = (complete: boolean, claimed: boolean) => (claimed ? 2 : complete ? 0 : 1)
-    return QUESTS.map((q) => {
-      const progress = questProgress(q.objective, ctx)
-      const target = questTarget(q.objective)
-      const complete = progress >= target
-      const claimed = claimedQuests.includes(q.id)
-      const pct = Math.max(0, Math.min(100, (progress / target) * 100))
-      return { q, progress, target, complete, claimed, pct }
-    }).sort((a, b) => {
-      const dr = rank(a.complete, a.claimed) - rank(b.complete, b.claimed)
-      return dr !== 0 ? dr : b.pct - a.pct
-    })
-  }, [ctx, claimedQuests])
+  const rows = useMemo(() => questRows(ctx, claimedQuests), [ctx, claimedQuests])
 
   const claimableCount = rows.filter((r) => r.complete && !r.claimed).length
 
