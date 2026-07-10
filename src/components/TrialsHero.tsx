@@ -82,7 +82,7 @@ export default function TrialsHero({ onOpenAll }: { onOpenAll: () => void }) {
       </div>
       <div className="flex items-center justify-between mt-1.5 mb-4">
         <span className="font-ui text-[0.65rem] text-faded">
-          {fmtNum(progress)} / {fmtNum(target)} {q.unit}
+          {fmtNum(Math.min(progress, target))} / {fmtNum(target)} {q.unit}
         </span>
         <span className="font-ui text-[0.65rem] text-souls-dim">
           &#9737; {q.souls.toLocaleString()}

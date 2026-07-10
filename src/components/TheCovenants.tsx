@@ -131,7 +131,7 @@ export default function TheCovenants({ open, onClose }: { open: boolean; onClose
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="font-ui text-[0.65rem] text-faded">
-                        {fmtNum(q, progress)} / {fmtNum(q, target)} {q.unit}
+                        {fmtNum(q, Math.min(progress, target))} / {fmtNum(q, target)} {q.unit}
                       </span>
                       <span className="font-ui text-[0.65rem] text-souls-dim">
                         &#9737; {q.souls.toLocaleString()}
