@@ -173,3 +173,4 @@ export const QUESTS: Quest[] = [
     itemReward: 'grand-flame',
   },
 ]
+/* eof */

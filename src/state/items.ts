@@ -173,6 +173,24 @@ export const ITEMS: Item[] = [
     lore: 'Four plates. The Colossus of Iron does not kneel — yet it was raised, and so it fell.',
     unlockHint: 'Fell the Colossus of Iron in a Boss Encounter.',
   },
+  {
+    id: 'wyrm-scale',
+    name: 'Scale of the Furnace Wyrm',
+    rarity: 'legendary',
+    type: 'trophy',
+    effect: null,
+    lore: 'A single scale of Vulcanax, still furnace-hot. It fell the moment the iron rose past the sky it claimed.',
+    unlockHint: 'Fell Vulcanax, the Furnace Wyrm, in a Boss Encounter.',
+  },
+  {
+    id: 'ashen-dragon-heart',
+    name: 'Heart of the Ashen Dragon',
+    rarity: 'legendary',
+    type: 'relic',
+    effect: { kind: 'soulsMultiplier', value: 10 },
+    lore: 'The elder ember itself, torn beating from the first of dragons. A hoard gathers to whoever carries it.',
+    unlockHint: 'Fell the Ashen Dragon in a Boss Encounter.',
+  },
 ]
 
 const BY_ID = new Map(ITEMS.map((i) => [i.id, i]))

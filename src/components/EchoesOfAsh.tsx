@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useGame, statusEffects, localDayKey } from '../state/store'
-import EmptyWidget, { navigateTab } from './EmptyWidget'
+import { navigateTab } from '../ui/navigate'
 
 /* ================================================================
    ECHOES OF ASH — a rolling 12-week heatmap of daily battle.
@@ -65,14 +65,55 @@ export default function EchoesOfAsh() {
   const base = hollowed ? '109,168,207' : '255,117,24'
   const selData = sel ? byDay.get(sel) : undefined
 
+  /* ---- the prophetic grid: no battles yet ----
+     Show the real 12-week rune field, cold and waiting, with this
+     day's rune alone breathing ember — the first impression is the
+     widget's future, not a hole in the dashboard. */
   if (byDay.size === 0) {
+    const todayRune = localDayKey(new Date().toISOString())
     return (
-      <EmptyWidget
-        title="The Ash Lies Cold"
-        body="Not a single ember burns yet. Fight thy first battle, and the weeks shall fill with ash and fire."
-        cta="Fight thy first battle"
-        onCta={() => navigateTab('combat')}
-      />
+      <div className="panel panel-ornate p-4">
+        <div className="flex items-baseline justify-between mb-3">
+          <span className="font-display text-[0.65rem] tracking-[0.25em] uppercase text-souls-dim">
+            {WEEKS} weeks of ash &amp; ember
+          </span>
+          <span className="font-ui text-[0.65rem] text-faded italic">unwritten</span>
+        </div>
+
+        <div className="grid grid-rows-7 grid-flow-col gap-[3px] w-max" aria-hidden>
+          {cells.map((c) =>
+            c.future ? (
+              <span key={c.key} className="w-3 h-3" />
+            ) : c.key === todayRune ? (
+              <motion.span
+                key={c.key}
+                className="w-3 h-3"
+                animate={{ opacity: [0.35, 0.95, 0.35] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{
+                  background: `rgba(${base},0.9)`,
+                  boxShadow: `0 0 8px rgba(${base},0.55)`,
+                }}
+              />
+            ) : (
+              <span key={c.key} className="w-3 h-3 opacity-55" style={{ background: 'var(--color-iron)' }} />
+            )
+          )}
+        </div>
+
+        <div className="mt-4 border-t border-ash pt-3 text-center">
+          <div className="font-display text-souls text-sm tracking-[0.15em] uppercase mb-1">
+            The Ash Lies Cold
+          </div>
+          <p className="font-body italic text-bone-dim text-sm leading-snug max-w-xs mx-auto mb-3">
+            Twelve weeks of runes, and not one yet kindled. This day&rsquo;s rune already glows,
+            waiting for thy fire — fight, and it burns ember by nightfall.
+          </p>
+          <button onClick={() => navigateTab('combat')} className="btn-ember min-h-11 px-6 text-[0.65rem]">
+            Fight Thy First Battle
+          </button>
+        </div>
+      </div>
     )
   }
 

@@ -14,6 +14,44 @@ import { useModalDismiss } from '../ui/useModalDismiss'
 
 const RANK = { ready: 0, available: 1, locked: 2, felled: 3 } as const
 
+/* ---- the dragon mark — a winged silhouette that beats its wing and
+   breathes embers, watermarked on dragon-tier encounter cards ---- */
+function DragonMark() {
+  return (
+    <div className="absolute right-1 top-1 w-24 opacity-40 pointer-events-none" aria-hidden>
+      <svg viewBox="0 0 120 80" className="w-full">
+        <g fill="var(--color-stone)">
+          <path d="M116 42 C94 52 82 54 64 52 C54 51 46 46 42 38 C38 30 32 25 24 23 L16 19 L7 25 L15 29 L11 36 L21 33 C27 36 32 40 34 46 C40 55 52 59 64 59 C82 61 100 54 116 42 Z" />
+          <path d="M50 57 l-3 9 l7 0 Z" />
+          <path d="M72 59 l-2 9 l7 0 Z" />
+          <path d="M18 19 l-5 -9 l8 3 Z" />
+          <motion.path
+            d="M52 48 C56 28 72 16 96 12 C84 22 79 32 77 43 C69 39 60 42 52 48 Z"
+            initial={false}
+            animate={{ rotate: [-5, 9, -5] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ transformOrigin: '52px 48px' }}
+          />
+        </g>
+        <circle cx="17" cy="24" r="1.4" fill="var(--color-ember)" />
+        {/* ember breath */}
+        {[0, 1].map((i) => (
+          <motion.circle
+            key={i}
+            cx="6"
+            cy="28"
+            r={1.5 - i * 0.4}
+            fill="var(--color-ember)"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.9, 0], cx: [8, -4], cy: [27, 31 + i * 3] }}
+            transition={{ duration: 1.8, delay: i * 0.7, repeat: Infinity, ease: 'easeOut' }}
+          />
+        ))}
+      </svg>
+    </div>
+  )
+}
+
 export default function BossEncounters({ open, onClose }: { open: boolean; onClose: () => void }) {
   const xp = useGame((s) => s.xp)
   const prs = useGame((s) => s.prs)
@@ -92,15 +130,19 @@ export default function BossEncounters({ open, onClose }: { open: boolean; onClo
                 return (
                   <div
                     key={b.id}
-                    className={`panel panel-ornate p-4 ${state === 'locked' ? 'opacity-55' : ''} ${state === 'felled' ? 'opacity-60' : ''}`}
+                    className={`panel panel-ornate p-4 relative overflow-hidden ${state === 'locked' ? 'opacity-55' : ''} ${state === 'felled' ? 'opacity-60' : ''}`}
                     style={{ borderColor: state === 'ready' ? accent : undefined }}
                   >
+                    {b.tier === 'dragon' && state !== 'locked' && <DragonMark />}
                     <div className="flex items-baseline justify-between gap-3">
                       <h3 className="font-display text-bone text-sm tracking-[0.12em] uppercase truncate">
                         {state === 'locked' ? '??? — Sealed' : b.name}
                       </h3>
-                      <span className="font-ui text-[0.55rem] tracking-[0.2em] uppercase shrink-0 text-faded">
-                        {b.movement}
+                      <span
+                        className="font-ui text-[0.55rem] tracking-[0.2em] uppercase shrink-0 text-faded"
+                        style={b.tier === 'dragon' && state !== 'locked' ? { color: accent } : undefined}
+                      >
+                        {b.tier === 'dragon' && state !== 'locked' ? <>Dragon &middot; {b.movement}</> : b.movement}
                       </span>
                     </div>
 
@@ -197,7 +239,7 @@ export default function BossEncounters({ open, onClose }: { open: boolean; onClo
                     className="font-display font-bold text-3xl tracking-[0.14em] mb-2 drop-shadow-[0_0_26px_rgba(220,38,38,0.45)]"
                     style={{ color: accent }}
                   >
-                    GREAT ENEMY FELLED
+                    {fx.tier === 'dragon' ? 'DRAGON FELLED' : 'GREAT ENEMY FELLED'}
                   </h2>
                   <p className="font-display text-bone-dim text-[0.65rem] tracking-[0.3em] uppercase mb-6">
                     {fx.name}

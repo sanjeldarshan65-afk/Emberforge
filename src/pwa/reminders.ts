@@ -41,6 +41,8 @@ export type ReminderState = {
   macroGoals: { calories: number; protein: number; carbs: number; fats: number }
   claimedDailies: string[]
   claimedSeasons: string[]
+  emberBurns: string[]
+  emberBank: number
 }
 
 /** pure: which reminders are due right now (delivery-agnostic) */
@@ -48,9 +50,10 @@ export function computeReminders(s: ReminderState, now: Date = new Date()): Remi
   const out: Reminder[] = []
   const dayKey = todayKey()
 
-  /* the streak lives on yesterday's fire alone */
-  const { streak, daysSinceLast } = statusEffects(s.battles)
-  if (streak > 0 && daysSinceLast === 1) {
+  /* no battle yet today and the chain would break at midnight — a banked
+     ember shields it silently, so only cry out when the bank is empty */
+  const { streak, daysSinceLast } = statusEffects(s.battles, s.emberBurns)
+  if (streak > 0 && daysSinceLast !== null && daysSinceLast >= 1 && s.emberBank === 0) {
     out.push({
       id: 'streak-at-risk',
       title: 'The fire gutters',

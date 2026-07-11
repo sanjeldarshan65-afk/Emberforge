@@ -52,18 +52,18 @@ export const EXERCISES: Exercise[] = [
     heat: { primary: ['Chest'], secondary: ['Core', 'Arms'] },
     cues: ['Brace the core like iron; the body moves as a single slab of stone.', 'Descend until thy chest grazes the ground.', 'Drive the earth away from thee.'] },
   { name: 'Dip', category: 'Chest', compound: false,
-    primary: ['Lower Chest', 'Triceps'], secondary: ['Front Delts'],
+    primary: ['Lower Chest'], secondary: ['Triceps', 'Front Delts'],
     heat: { primary: ['Chest'], secondary: ['Arms', 'Shoulders'] },
     cues: ['Lean forward as one peering into the abyss.', 'Descend until the shoulders sink just below the elbows — no further.', 'Press back to the summit without swinging; the iron respects stillness.'] },
 
   /* ---------- back ---------- */
   { name: 'Deadlift', category: 'Back', compound: true, standard: 1.75,
     primary: ['Posterior Chain'], secondary: ['Lats', 'Core', 'Grip'],
-    heat: { primary: ['Back'], secondary: ['Legs', 'Core'] },
+    heat: { primary: ['Back'], secondary: ['Legs', 'Core', 'Arms'] },
     cues: ['Wedge thyself against the bar; take the slack as a held breath.', 'The bar climbs thy legs like ivy up a keep.', 'Stand tall at the summit. Do not lean back into ruin.'] },
   { name: 'Barbell Row', category: 'Back', compound: true, standard: 0.9,
     primary: ['Lats', 'Mid Back'], secondary: ['Biceps', 'Core'],
-    heat: { primary: ['Back'], secondary: ['Arms', 'Shoulders'] },
+    heat: { primary: ['Back'], secondary: ['Arms', 'Shoulders', 'Core'] },
     cues: ['Hinge and hold — the torso is a drawbridge, lowered and locked.', 'Tear the bar to thy waist as a blade from the earth.', 'Let no heave of the hips steal what the back must earn.'] },
   { name: 'Seated Cable Row', category: 'Back', compound: true,
     primary: ['Mid Back', 'Lats'], secondary: ['Biceps'],
@@ -79,7 +79,7 @@ export const EXERCISES: Exercise[] = [
     cues: ['Any brand of row-machine will forge the same broad back.', 'Set the pad against thy chest and pull the handles home.', 'Pause a breath at the squeeze before the stack descends.'] },
   { name: 'Pull-Up', category: 'Back', compound: false,
     primary: ['Lats'], secondary: ['Biceps', 'Rear Delts'],
-    heat: { primary: ['Back'], secondary: ['Arms'] },
+    heat: { primary: ['Back'], secondary: ['Arms', 'Shoulders'] },
     cues: ['Hang as the condemned; rise as the chosen.', 'Pull thine elbows to thy ribs, not thy chin to the bar.', 'Descend with control — the fall teaches as much as the rise.'] },
   { name: 'Lat Pulldown', category: 'Back', compound: false,
     primary: ['Lats'], secondary: ['Biceps'],
@@ -87,7 +87,7 @@ export const EXERCISES: Exercise[] = [
     cues: ['Sit tall; anchor thy thighs beneath the pads as roots beneath stone.', 'Draw the bar to thy collarbone, chest rising to meet it.', 'Resist the return — the cable is a serpent that must not escape.'] },
   { name: 'Rack Pull', category: 'Back', compound: true,
     primary: ['Posterior Chain', 'Traps'], secondary: ['Grip'],
-    heat: { primary: ['Back'], secondary: ['Legs'] },
+    heat: { primary: ['Back'], secondary: ['Legs', 'Arms'] },
     cues: ['Set the pins at thy knees; the road is short but heavy.', 'Brace, then drag the bar up thy thighs to a proud lockout.', 'Guard thy spine — pride here is paid for in the morning.'] },
 
   /* ---------- legs ---------- */
@@ -97,7 +97,7 @@ export const EXERCISES: Exercise[] = [
     cues: ['Root thy feet; grip the ground as talons grip prey.', 'Sit between thy legs — three breaths down, chest proud.', 'Rise as though the sky itself resists thee.'] },
   { name: 'Front Squat', category: 'Legs', compound: true,
     primary: ['Quads'], secondary: ['Core', 'Upper Back'],
-    heat: { primary: ['Legs'], secondary: ['Core'] },
+    heat: { primary: ['Legs'], secondary: ['Core', 'Back'] },
     cues: ['Rack the bar upon thy collar as a yoke of office; elbows to the sky.', 'Stay upright — to bow forward is to drop the crown.', 'Descend deep, and rise leading with the elbows.'] },
   { name: 'Bulgarian Split Squat', category: 'Legs', compound: false,
     primary: ['Quads', 'Glutes'], secondary: ['Core'],
@@ -197,13 +197,13 @@ export const EXERCISES: Exercise[] = [
     cues: ['Raise the iron overhead as a torch against the dark.', 'Lower behind thy skull for a deep stretch of the long head.', 'Extend fully; keep the elbows from flaring like broken gates.'] },
   { name: 'Close-Grip Bench Press', category: 'Arms', compound: true,
     primary: ['Triceps'], secondary: ['Chest', 'Front Delts'],
-    heat: { primary: ['Arms'], secondary: ['Chest'] },
+    heat: { primary: ['Arms'], secondary: ['Chest', 'Shoulders'] },
     cues: ['Grip within shoulder-width; the triceps take the crown here.', 'Tuck the elbows close and lower to the low chest.', 'Press straight up; let the arms, not the shoulders, drive.'] },
 
   /* ---------- core ---------- */
   { name: 'Plank', category: 'Core', compound: false,
     primary: ['Core'], secondary: ['Shoulders', 'Glutes'],
-    heat: { primary: ['Core'], secondary: ['Shoulders'] },
+    heat: { primary: ['Core'], secondary: ['Shoulders', 'Legs'] },
     cues: ['Become the drawbridge — rigid from crown to heel.', 'Squeeze the glutes and brace as if awaiting a blow.', 'Breathe shallow and steady; the trembling is the offering.'] },
   { name: 'Hanging Leg Raise', category: 'Core', compound: false,
     primary: ['Core'], secondary: ['Grip'],
@@ -219,7 +219,7 @@ export const EXERCISES: Exercise[] = [
     cues: ['Sit as on a throne tilted back, feet light.', 'Rotate the iron from flank to flank with control.', 'Turn from the waist, not the arms; the obliques stand trial.'] },
   { name: "Farmer's Carry", category: 'Core', compound: false,
     primary: ['Core', 'Grip'], secondary: ['Traps', 'Upper Back'],
-    heat: { primary: ['Core'], secondary: ['Back', 'Arms'] },
+    heat: { primary: ['Core', 'Arms'], secondary: ['Back'] },
     cues: ['Take up the burdens as a pilgrim takes up penance.', 'Walk tall — shoulders back, ribs stacked over hips.', 'Set the iron down with dignity, not surrender.'] },
 ]
 

@@ -10,7 +10,8 @@ import {
 } from 'recharts'
 import { useGame, MOVEMENTS, localDayKey } from '../state/store'
 import type { Movement } from '../state/store'
-import EmptyWidget, { navigateTab } from './EmptyWidget'
+import EmptyWidget from './EmptyWidget'
+import { navigateTab } from '../ui/navigate'
 
 /* ================================================================
    SOULS LEDGER — estimated 1RM over time, drawn in ember & gold

@@ -41,6 +41,23 @@ export default function Splash({ onDone }: { onDone: () => void }) {
           transition={{ duration: 1.8, times: [0, 0.45, 1], ease: 'easeInOut' }}
           className="w-3 h-3 rounded-full bg-ember-bright shadow-ember-glow"
         />
+        {/* sparks shaken loose as the flame takes */}
+        {[
+          { x: -18, drift: -8, delay: 0.9, dur: 1.6 },
+          { x: 12, drift: 7, delay: 1.1, dur: 1.4 },
+          { x: -4, drift: -3, delay: 1.3, dur: 1.2 },
+          { x: 20, drift: 5, delay: 1.0, dur: 1.5 },
+        ].map((s, i) => (
+          <motion.span
+            key={i}
+            aria-hidden
+            className="absolute h-1 w-1 rounded-full bg-ember-bright"
+            style={{ marginLeft: s.x }}
+            initial={{ opacity: 0 }}
+            animate={{ y: [4, -42], x: [0, s.drift], opacity: [0, 0.85, 0] }}
+            transition={{ duration: s.dur, delay: s.delay, ease: 'easeOut' }}
+          />
+        ))}
       </div>
 
       <motion.h1

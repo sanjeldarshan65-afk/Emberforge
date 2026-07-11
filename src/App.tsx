@@ -4,7 +4,9 @@ import BottomNav from './components/BottomNav'
 import type { TabId } from './components/BottomNav'
 import InstallPrompt from './pwa/InstallPrompt'
 import Splash from './components/Splash'
+import Bonfire from './components/Bonfire'
 import SettingsSheet from './components/SettingsSheet'
+import StreakSheet from './components/StreakSheet'
 import RiteOfEmbers from './components/RiteOfEmbers'
 import { SigilWatcher } from './components/SigilVault'
 import { ToastProvider } from './ui/Toast'
@@ -64,8 +66,12 @@ function TitleScreen({ onRest, onNewLegend }: { onRest: () => void; onNewLegend:
         animate="show"
         className="w-full max-w-lg text-center"
       >
-        <motion.div variants={fadeUp} className="divider-ornate mb-8">
+        <motion.div variants={fadeUp} className="divider-ornate mb-6">
           A Fire Yet Burns
+        </motion.div>
+
+        <motion.div variants={fadeUp} className="mb-2">
+          <Bonfire className="w-32 h-32" />
         </motion.div>
 
         <motion.h1
@@ -187,6 +193,7 @@ const StreakFlameIcon = () => (
 function Hub() {
   const [tab, setTab] = useState<TabId>('sanctum')
   const [showSettings, setShowSettings] = useState(false)
+  const [showStreak, setShowStreak] = useState(false)
   const xp = useGame((s) => s.xp)
   const souls = useGame((s) => s.souls)
   const profile = useGame((s) => s.profile)
@@ -194,11 +201,14 @@ function Hub() {
   const updateSettings = useGame((s) => s.updateSettings)
   const applyStatusEffects = useGame((s) => s.applyStatusEffects)
   const battles = useGame((s) => s.battles)
+  const emberBurns = useGame((s) => s.emberBurns)
+  const emberBank = useGame((s) => s.emberBank)
   const { level, into, needed } = levelInfo(xp)
   const rank = rankForLevel(level)
-  const { streak, daysSinceLast } = statusEffects(battles)
-  /* the streak lives on yesterday's fire alone — idle today and it dies */
-  const streakAtRisk = streak > 0 && daysSinceLast === 1
+  const { streak, daysSinceLast } = statusEffects(battles, emberBurns)
+  /* no battle yet today and the chain would break at midnight — unless a
+     banked ember stands ready to burn in thy stead */
+  const streakAtRisk = streak > 0 && daysSinceLast !== null && daysSinceLast >= 1 && emberBank === 0
 
   /* settle the curse's debt + take an automatic rolling backup once per visit */
   useEffect(() => {
@@ -283,32 +293,36 @@ function Hub() {
             </span>
           </span>
 
-          <span
-            className={`inline-flex items-center gap-1 ${
+          <button
+            onClick={() => setShowStreak(true)}
+            className={`inline-flex items-center gap-1 min-h-10 -my-2 ${
               streakAtRisk
                 ? 'text-estus'
                 : streak > 0
                   ? 'text-ember-bright'
                   : 'text-faded'
             }`}
-            title={
+            aria-label={
               streakAtRisk
-                ? `${streak}-day streak — the fire gutters; train today to keep it`
-                : streak > 0
-                  ? `${streak}-day streak`
-                  : 'no streak yet — a battle today kindles one'
+                ? `${streak}-day streak — the fire gutters; train today to keep it. Open the streak panel.`
+                : `${streak}-day streak. Open the streak panel.`
             }
           >
             <span className={streakAtRisk ? 'animate-flicker' : undefined}>
               <StreakFlameIcon />
             </span>
             <span className="font-semibold">{streak}</span>
+            {emberBank > 0 && (
+              <span className="text-estus text-[0.6rem] leading-none tracking-tight" title={`${emberBank} banked ember${emberBank > 1 ? 's' : ''}`}>
+                {'⬩'.repeat(emberBank)}
+              </span>
+            )}
             {streakAtRisk && (
               <span className="font-ui text-[0.55rem] tracking-[0.15em] uppercase text-estus/80 ml-0.5">
                 gutters
               </span>
             )}
-          </span>
+          </button>
 
           <span className="inline-flex items-center gap-1 text-souls">
             <span className="leading-none">&#9737;</span>
@@ -366,6 +380,8 @@ function Hub() {
       <BottomNav tab={tab} onChange={setTab} />
 
       <SettingsSheet open={showSettings} onClose={() => setShowSettings(false)} />
+
+      <StreakSheet open={showStreak} onClose={() => setShowStreak(false)} />
     </motion.div>
   )
 }

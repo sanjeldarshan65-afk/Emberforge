@@ -1,0 +1,14 @@
+{
+  "appId": "com.emberforge.app",
+  "appName": "Emberforge",
+  "webDir": "dist",
+  "backgroundColor": "#0a0806",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a0806",
+    "preferredContentMode": "mobile"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

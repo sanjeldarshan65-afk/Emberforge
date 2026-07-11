@@ -29,6 +29,7 @@ export default function TheCovenants({ open, onClose }: { open: boolean; onClose
   const vitals = useGame((s) => s.vitals)
   const claimedQuests = useGame((s) => s.claimedQuests)
   const claimQuest = useGame((s) => s.claimQuest)
+  const emberBurns = useGame((s) => s.emberBurns)
 
   const [fx, setFx] = useState<Quest | null>(null)
 
@@ -36,12 +37,12 @@ export default function TheCovenants({ open, onClose }: { open: boolean; onClose
     () => ({
       level: levelInfo(xp).level,
       battleCount: battles.length,
-      streak: statusEffects(battles).streak,
+      streak: statusEffects(battles, emberBurns).streak,
       prs,
       macroDays: macroDaysMet(rations, macroGoals.calories),
       taperRatio: vitals.waist > 0 ? vitals.shoulders / vitals.waist : 0,
     }),
-    [xp, prs, battles, rations, macroGoals, vitals]
+    [xp, prs, battles, rations, macroGoals, vitals, emberBurns]
   )
 
   const rows = useMemo(() => questRows(ctx, claimedQuests), [ctx, claimedQuests])

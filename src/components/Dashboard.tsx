@@ -78,8 +78,12 @@ export default function Dashboard() {
   const demoActive = useGame((s) => s.demoActive)
   const xp = useGame((s) => s.xp)
   const rank = rankForLevel(levelInfo(xp).level)
+  /* only true covenants count here — the Welcome Rite claims through the same
+     ledger under its own pseudo-id and must not inflate the scoreboard */
+  const covenantsClaimed = claimedQuests.filter((id) => QUESTS.some((q) => q.id === id)).length
 
-  const { streak, daysSinceLast, ascended, cursed } = statusEffects(battles)
+  const emberBurns = useGame((s) => s.emberBurns)
+  const { streak, daysSinceLast, ascended, cursed } = statusEffects(battles, emberBurns)
   /* muscle-heat = battle history + fatigueRecovery relics (Hoard) + Constellation nodes */
   const fatigue = useMemo(
     () => fatigueWithRelics(battles, new Set(inventory.map((o) => o.id)), new Set(unlockedNodes)),
@@ -123,6 +127,9 @@ export default function Dashboard() {
           </span>
         </motion.div>
       )}
+
+      {/* ============ THE WELCOME RITE (retires once claimed) ============ */}
+      <Kindling />
 
       {/* ============ DAILY EMBER ============ */}
       <motion.section variants={fadeUp}>
@@ -266,8 +273,6 @@ export default function Dashboard() {
         </div>
       </motion.section>
 
-      <Kindling />
-
       {/* ============ THE BODY'S BALANCE ============ */}
       <motion.section variants={fadeUp}>
         <div className="divider-ornate mb-4">The Body's Balance</div>
@@ -390,21 +395,52 @@ export default function Dashboard() {
       {/* ============ COVENANTS ============ */}
       <motion.section variants={fadeUp}>
         <div className="divider-ornate mb-4">Covenants</div>
-        <button
-          onClick={() => setCovenantsOpen(true)}
-          className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
-        >
-          <div>
-            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">Sworn Covenants</div>
-            <div className="font-ui text-xs text-bone-dim mt-0.5">
-              Goals tracked against thy deeds — souls &amp; relics for the faithful
+        {covenantsClaimed === 0 ? (
+          /* nothing sworn yet — an invitation, not a 0/7 scoreboard */
+          <button
+            onClick={() => setCovenantsOpen(true)}
+            className="panel panel-ornate w-full p-4 text-left"
+          >
+            <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">
+              No Covenant Yet Sworn
             </div>
-          </div>
-          <span className="stat-souls text-lg shrink-0">
-            {claimedQuests.length}
-            <span className="text-souls-dim text-sm"> / {QUESTS.length}</span>
-          </span>
-        </button>
+            <p className="font-body italic text-bone-dim text-sm leading-snug mt-1 mb-3">
+              {QUESTS.length} oaths await thee. The first,{' '}
+              <span className="text-souls not-italic">First Blood</span>, asks but five meetings
+              with the iron — souls and a relic to the faithful.
+            </p>
+            <div className="h-1.5 bg-abyss border border-ash overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-ember-deep to-ember transition-[width] duration-700"
+                style={{ width: `${Math.min((battles.length / 5) * 100, 100)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="font-ui text-[0.65rem] text-faded">
+                {Math.min(battles.length, 5)} / 5 battles
+              </span>
+              <span className="font-display text-[0.6rem] tracking-[0.2em] uppercase text-glow-ember">
+                Swear thine oaths &rsaquo;
+              </span>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={() => setCovenantsOpen(true)}
+            className="panel panel-ornate w-full p-4 flex items-center justify-between text-left"
+          >
+            <div>
+              <div className="font-display text-souls text-sm tracking-[0.15em] uppercase">Sworn Covenants</div>
+              <div className="font-ui text-xs text-bone-dim mt-0.5">
+                Goals tracked against thy deeds — souls &amp; relics for the faithful
+              </div>
+            </div>
+            <span className="stat-souls text-lg shrink-0">
+              {covenantsClaimed}
+              <span className="text-souls-dim text-sm"> / {QUESTS.length}</span>
+            </span>
+          </button>
+        )}
       </motion.section>
 
       {covenantsEver.current && (

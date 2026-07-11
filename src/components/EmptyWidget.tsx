@@ -1,17 +1,13 @@
 import { motion } from 'framer-motion'
-import type { TabId } from './BottomNav'
 
 /* ================================================================
    EMPTY WIDGET — an inviting, on-theme empty state: a small bonfire
    illustration (which cools to spectral blue in Hollowed mode, since
    it draws in the ember token), a title, a line of lore, and ONE clear
    call-to-action. Used wherever a data widget has nothing to show yet.
+   (navigateTab lives in ui/navigate.ts so this file stays
+   fast-refresh clean.)
    ================================================================ */
-
-/** ask App to switch tabs without prop-drilling a callback through the tree */
-export function navigateTab(to: TabId) {
-  window.dispatchEvent(new CustomEvent('emberforge:navigate', { detail: to }))
-}
 
 export default function EmptyWidget({
   title,

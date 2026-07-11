@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame } from '../state/store'
-import { seekGuidance } from '../ai/fireKeeper'
-import type { KeeperContext } from '../ai/fireKeeper'
+import { seekGuidance, keeperMindEnabled, setKeeperMind } from '../ai/fireKeeper'
+import type { KeeperContext, KeeperTopic } from '../ai/fireKeeper'
+import { hasVisionKey } from '../ai/vision'
 import { detectDeload } from '../state/deload'
 import { fatigueWithRelics } from '../state/recovery'
 import { pick, KEEPER_GREETINGS } from '../ui/flavor'
@@ -64,6 +65,7 @@ export default function FireKeeper() {
   const prs = useGame((s) => s.prs)
   const vitals = useGame((s) => s.vitals)
   const taperGoal = useGame((s) => s.settings.taperGoal)
+  const units = useGame((s) => s.settings.units)
 
   const [messages, setMessages] = useState<string[]>(() => [pick(KEEPER_GREETINGS)])
   const [thinking, setThinking] = useState(false)
@@ -74,21 +76,24 @@ export default function FireKeeper() {
      fatigue() folds in any fatigueRecovery relics owned. */
   const inventory = useGame((s) => s.inventory)
   const unlockedNodes = useGame((s) => s.unlockedNodes)
-  const deloadFlags = useMemo(
-    () =>
-      detectDeload(
-        battles,
-        fatigueWithRelics(battles, new Set(inventory.map((o) => o.id)), new Set(unlockedNodes))
-      ),
+  const fatigue = useMemo(
+    () => fatigueWithRelics(battles, new Set(inventory.map((o) => o.id)), new Set(unlockedNodes)),
     [battles, inventory, unlockedNodes]
   )
+  const deloadFlags = useMemo(() => detectDeload(battles, fatigue), [battles, fatigue])
   useEffect(() => setDeloadDismissed(false), [battles])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages.length, thinking])
 
-  const consult = async () => {
+  const [trueMind, setTrueMind] = useState(() => keeperMindEnabled())
+  const toggleMind = () => {
+    setKeeperMind(!trueMind)
+    setTrueMind(!trueMind)
+  }
+
+  const consult = async (topic: KeeperTopic = 'counsel') => {
     if (thinking) return
     setThinking(true)
     const ctx: KeeperContext = {
@@ -97,19 +102,28 @@ export default function FireKeeper() {
       vitals,
       taperRatio: vitals.shoulders / vitals.waist,
       taperGoal,
+      units,
+      fatigue, // relic-adjusted — the Keeper's counsel matches the Fading Flame exactly
     }
     try {
-      const reply = await seekGuidance(ctx)
+      const reply = await seekGuidance(ctx, topic)
       setMessages((m) => [...m, reply])
     } catch {
       setMessages((m) => [
         ...m,
-        'The flame gutters... I cannot see clearly. (The oracle failed — if a local model is connected, check that it still burns.)',
+        'The flame gutters... I cannot see clearly. (The oracle failed — if a true mind is attuned, check that it still burns.)',
       ])
     } finally {
       setThinking(false)
     }
   }
+
+  const TOPICS: { id: KeeperTopic; label: string }[] = [
+    { id: 'next', label: 'Next session' },
+    { id: 'stall', label: 'Why the stall?' },
+    { id: 'weakest', label: 'My weakest work' },
+    { id: 'cadence', label: 'My cadence' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -216,11 +230,25 @@ export default function FireKeeper() {
         </div>
       </div>
 
+      {/* ---- put a question to the keeper ---- */}
+      <div className="flex flex-wrap gap-1.5 justify-center">
+        {TOPICS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => consult(t.id)}
+            disabled={thinking}
+            className="min-h-10 px-3 border border-souls-dim/40 font-display text-[0.58rem] tracking-[0.15em] uppercase text-bone-dim hover:text-souls hover:border-souls-dim active:border-ember transition-colors disabled:opacity-40"
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* ---- seek guidance ---- */}
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={consult}
+        onClick={() => consult('counsel')}
         disabled={thinking}
         className="btn-ember animate-ember-pulse w-full min-h-14 text-sm"
       >
@@ -229,8 +257,35 @@ export default function FireKeeper() {
 
       <p className="text-center font-ui text-xs text-faded">
         The keeper reads thy Recent Battles and Golden Taper from the ledger.
-        {' '}One day, a true mind shall burn behind her eyes.
+        {' '}Attune a key in the Cauldron, and a true mind may burn behind her eyes.
       </p>
+
+      {/* ---- the True Mind: opt-in LLM narration over the attuned key ---- */}
+      {hasVisionKey() && (
+        <button
+          role="switch"
+          aria-checked={trueMind}
+          onClick={toggleMind}
+          className="w-full flex items-center justify-center gap-3 min-h-10"
+        >
+          <span
+            className={`relative inline-block w-10 h-6 shrink-0 border transition-colors duration-300 ${
+              trueMind ? 'border-ember bg-ember-deep/40 shadow-ember-glow' : 'border-ash bg-abyss'
+            }`}
+          >
+            <motion.span
+              initial={false}
+              animate={{ x: trueMind ? 19 : 3 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              className={`absolute top-[4px] h-3.5 w-3.5 ${trueMind ? 'bg-ember' : 'bg-stone'}`}
+            />
+          </span>
+          <span className="font-ui text-xs text-faded text-left">
+            <span className={trueMind ? 'text-glow-ember' : 'text-bone-dim'}>True Mind</span>
+            {' '}&middot; narrate through thy attuned key &mdash; sends only lift numbers, never thy name
+          </span>
+        </button>
+      )}
     </div>
   )
 }

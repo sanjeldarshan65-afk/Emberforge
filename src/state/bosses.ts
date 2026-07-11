@@ -16,6 +16,7 @@ export type Boss = {
   unlockLevel: number // hidden until this level
   souls: number // bonus souls on the fell
   trophy: string // catalog item id granted
+  tier?: 'dragon' // apex encounters — winged, and announced accordingly
 }
 
 export type BossState = 'locked' | 'available' | 'ready' | 'felled'
@@ -60,6 +61,28 @@ export const BOSSES: Boss[] = [
     unlockLevel: 15,
     souls: 3000,
     trophy: 'colossus-heart',
+  },
+  {
+    id: 'furnace-wyrm',
+    name: 'Vulcanax, the Furnace Wyrm',
+    lore: 'It roosts above the forge and scorns all who cannot press the sky. Drive the iron overhead, into its throat.',
+    movement: 'Overhead Press',
+    target: 185,
+    unlockLevel: 18,
+    souls: 4500,
+    trophy: 'wyrm-scale',
+    tier: 'dragon',
+  },
+  {
+    id: 'ashen-dragon',
+    name: 'The Ashen Dragon',
+    lore: 'Elder of all embers, coiled beneath the first bonfire. Four plates upon thy back, and its wings fail at last.',
+    movement: 'Squat',
+    target: 405,
+    unlockLevel: 25,
+    souls: 8000,
+    trophy: 'ashen-dragon-heart',
+    tier: 'dragon',
   },
 ]
 

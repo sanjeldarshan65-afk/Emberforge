@@ -1,7 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGame, todayKey } from '../state/store'
 import type { Macros, SavedMeal } from '../state/store'
+import {
+  sumConsumed,
+  remainingOf,
+  remainingAll,
+  overageOf,
+  flaskPctOf,
+  macroConsistencyViolations,
+} from '../state/nutrition'
 import { useToast } from '../ui/toastContext'
 import TheCauldron from './TheCauldron'
 
@@ -108,13 +116,18 @@ function MacroBar({
   barClass: string
 }) {
   const pct = Math.min((used / goal) * 100, 100)
-  const left = Math.max(0, goal - used)
+  const left = remainingOf(goal, used)
+  const over = overageOf(goal, used)
   return (
     <div>
       <div className="flex justify-between font-ui text-xs mb-1">
         <span className="text-bone-dim">{label}</span>
         <span className={left === 0 ? 'text-glow-ember' : 'text-faded'}>
-          {left === 0 ? 'goal met' : `${left.toFixed(0)}g remain`}
+          {left === 0
+            ? over > 0
+              ? `goal met · +${over.toFixed(0)}g over`
+              : 'goal met'
+            : `${left.toFixed(0)}g remain`}
         </span>
       </div>
       <div className="h-1.5 bg-abyss border border-ash overflow-hidden">
@@ -150,22 +163,24 @@ export default function RationsTracker() {
 
   const today = useMemo(() => rations.filter((r) => r.date === todayKey()), [rations])
 
-  const consumed = useMemo(
-    () =>
-      today.reduce(
-        (t, r) => ({
-          calories: t.calories + r.calories,
-          protein: t.protein + r.protein,
-          carbs: t.carbs + r.carbs,
-          fats: t.fats + r.fats,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fats: 0 }
-      ),
-    [today]
-  )
+  /* all arithmetic lives in state/nutrition.ts — one source of truth,
+     unit-tested in tests/nutrition.test.ts */
+  const consumed = useMemo(() => sumConsumed(rations, todayKey()), [rations])
 
-  const kcalLeft = Math.max(0, macroGoals.calories - consumed.calories)
-  const flaskPct = (consumed.calories / macroGoals.calories) * 100
+  const kcalLeft = remainingOf(macroGoals.calories, consumed.calories)
+  const flaskPct = flaskPctOf(macroGoals.calories, consumed.calories)
+
+  /* dev-mode invariant: after every add/remove, what the panel shows
+     must equal goal − sum(today's log) for all four macros */
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const violations = macroConsistencyViolations(macroGoals, rations, todayKey(), {
+      consumed,
+      remaining: { ...remainingAll(macroGoals, consumed), calories: kcalLeft },
+    })
+    if (violations.length)
+      console.error('[Estus Rations] macro consistency broken:\n' + violations.join('\n'))
+  }, [rations, macroGoals, consumed, kcalLeft])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()

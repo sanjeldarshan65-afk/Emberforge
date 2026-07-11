@@ -1,7 +1,8 @@
-import { useState, useRef, lazy, Suspense } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
 import { useGame, MOVEMENTS } from '../state/store'
+import WarmupRamp from './WarmupRamp'
 import type { Movement } from '../state/store'
 import { useToast } from '../ui/toastContext'
 import RestTimer from './RestTimer'
@@ -12,6 +13,7 @@ import VictoryOverlay from './VictoryOverlay'
 import type { Victory } from './VictoryOverlay'
 import type { Routine } from '../state/store'
 import { useSound } from '../ui/sound'
+import { consumePendingFoe } from '../ui/navigate'
 import ExercisePicker from './ExercisePicker'
 import { pick, VICTORY_LINES } from '../ui/flavor'
 
@@ -309,6 +311,19 @@ export default function CombatLog() {
     setMode('battle')
   }
 
+  /* a foe thrown down from the Codex ("Face This Foe") — open a freestyle
+     battle on that lift the moment this tab mounts */
+  useEffect(() => {
+    const foe = consumePendingFoe()
+    if (!foe) return
+    setPlan(null)
+    setSheets({})
+    setMovement(foe as Movement)
+    setRows(freshRows())
+    setMode('battle')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const wieldRoutine = (r: Routine) => {
     setPlan(r.movements)
     setSheets({})
@@ -377,6 +392,14 @@ export default function CombatLog() {
   const fillRow = (id: number, g: { weight: number; reps: number }) =>
     patchRow(id, { weight: String(g.weight), reps: String(g.reps) })
   const lastVolume = lastBattle?.volume ?? 0
+
+  /* the chronicle: the last three clashes with this foe, newest first */
+  const foeHistory = battles.filter((b) => b.movement === movement).slice(0, 3)
+
+  /* warm-up ramp target: the first weight entered this session,
+     else last session's top set, else the standing record */
+  const rampTarget =
+    rows.map((r) => Number(r.weight)).find((w) => w > 0) ?? lastBattle?.topWeight ?? pr
 
   const finishBattle = () => {
     /* Every lift with at least one completed set is logged as its own battle,
@@ -661,6 +684,48 @@ export default function CombatLog() {
           {pr > 0 ? 'Surpass it, and grow mighty.' : 'No record stands. Forge the first.'}
         </p>
       </div>
+
+      {/* ---- kindle the iron: warm-up ramp toward the working weight ---- */}
+      <WarmupRamp
+        target={rampTarget}
+        bar={settings.barWeight}
+        units={settings.units}
+        onForge={setPlateWeight}
+      />
+
+      {/* ---- the chronicle: last clashes with this foe ---- */}
+      {foeHistory.length > 0 && (
+        <div className="panel p-3">
+          <div className="font-display text-[0.55rem] tracking-[0.25em] uppercase text-souls-dim mb-2">
+            Chronicle of this foe
+          </div>
+          <div className="space-y-1.5">
+            {foeHistory.map((b, i) => {
+              const older = foeHistory[i + 1]
+              const trend = older ? Math.sign(b.e1rm - older.e1rm) : 0
+              return (
+                <div key={b.id} className="flex items-baseline gap-2 font-ui text-xs">
+                  <span className="text-faded w-16 shrink-0">
+                    {new Date(b.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span className="text-bone-dim">
+                    {b.topWeight} &times; {b.topReps}
+                  </span>
+                  <span className="text-faded ml-auto">
+                    e1RM <span className="stat-souls text-sm">{b.e1rm}</span>
+                    {trend !== 0 && (
+                      <span className={trend > 0 ? 'text-verdant' : 'text-blood-bright'}>
+                        {' '}
+                        {trend > 0 ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="font-ui text-xs text-faded text-center">
         swipe left to discard &middot; right to duplicate &middot; tap &#9670; to undo a set

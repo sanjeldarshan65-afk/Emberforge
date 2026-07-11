@@ -107,6 +107,9 @@ const dayNum = (key: string) => {
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000)
 }
 
+/** YYYY-MM-DD key from an absolute day number — dayNum's inverse */
+const keyFromDayNum = (n: number) => new Date(n * 86_400_000).toISOString().slice(0, 10)
+
 /* ---------- leveling math ---------- */
 /** XP required to advance FROM this level to the next */
 export const xpToAdvance = (level: number) => level * 100
@@ -154,21 +157,34 @@ export type StatusEffects = {
   cursed: boolean
 }
 
-export function statusEffects(battles: Battle[]): StatusEffects {
-  const dayKeys = [...new Set(battles.map((b) => localDayKey(b.date)))] // newest first
-  if (dayKeys.length === 0) {
+/* The Ember Bank — streak insurance. Bank an ember for souls; when a rest day
+   would break the chain, one burns in thy stead (automatically, on next visit). */
+export const EMBER_BANK_COST = 5000
+export const EMBER_BANK_MAX = 2
+
+/**
+ * Derive streak/buffs from battle history. `burns` are day-keys covered by a
+ * burned banked ember: they bridge the chain (the streak survives across them)
+ * but only true battle days add to the count. The Curse of Hollowing reads raw
+ * idle days — an ember shields the streak, not the curse.
+ */
+export function statusEffects(battles: Battle[], burns: string[] = []): StatusEffects {
+  const battleDays = [...new Set(battles.map((b) => localDayKey(b.date)))] // newest first
+  if (battleDays.length === 0) {
     return { streak: 0, daysSinceLast: null, ascended: false, cursed: false }
   }
 
-  const daysSinceLast = dayNum(todayKey()) - dayNum(dayKeys[0])
+  const daysSinceLast = dayNum(todayKey()) - dayNum(battleDays[0])
 
-  /* streak only lives if the chain reaches today or yesterday */
+  /* the chain walks battle days and burn days alike; it must reach today or yesterday */
+  const battleSet = new Set(battleDays)
+  const chainDays = [...new Set([...battleDays, ...burns])].sort((a, b) => dayNum(b) - dayNum(a))
   let streak = 0
-  if (daysSinceLast <= 1) {
-    streak = 1
-    for (let i = 1; i < dayKeys.length; i++) {
-      if (dayNum(dayKeys[i - 1]) - dayNum(dayKeys[i]) === 1) streak++
-      else break
+  if (dayNum(todayKey()) - dayNum(chainDays[0]) <= 1) {
+    streak = battleSet.has(chainDays[0]) ? 1 : 0
+    for (let i = 1; i < chainDays.length; i++) {
+      if (dayNum(chainDays[i - 1]) - dayNum(chainDays[i]) !== 1) break
+      if (battleSet.has(chainDays[i])) streak++
     }
   }
 
@@ -203,6 +219,8 @@ type GameState = {
   claimedQuests: string[]
   claimedSeasons: string[]
   claimedDailies: string[] // day-keys (YYYY-MM-DD) whose Daily Ember was claimed
+  emberBank: number // banked embers — streak insurance, max EMBER_BANK_MAX
+  emberBurns: string[] // day-keys a burned ember covered (bridge the streak chain)
   bossesDefeated: string[]
   unlockedNodes: string[]
   ascensionLevel: number
@@ -221,6 +239,7 @@ type GameState = {
   claimQuest: (id: string, souls: number, itemReward?: string) => void
   claimSeason: (id: string, souls: number) => void
   claimDaily: (dayKey: string, souls: number) => void
+  bankEmber: () => boolean
   defeatBoss: (id: string, souls: number, trophy?: string) => void
   unlockNode: (id: string, cost: number) => boolean
   ascend: () => boolean
@@ -267,6 +286,8 @@ export const useGame = create<GameState>()(
       claimedQuests: [],
       claimedSeasons: [],
       claimedDailies: [],
+      emberBank: 0,
+      emberBurns: [],
       bossesDefeated: [],
       unlockedNodes: [],
       ascensionLevel: 0,
@@ -343,9 +364,10 @@ export const useGame = create<GameState>()(
         }
 
         /* ascension is judged WITH today's battle — completing the
-           3rd straight day means this workout already earns 1.2x */
+           3rd straight day means this workout already earns 1.2x
+           (burned embers bridge the chain here too) */
         const withToday = [battle, ...s.battles]
-        const { ascended } = statusEffects(withToday)
+        const { ascended } = statusEffects(withToday, s.emberBurns)
 
         /* relics ALREADY in the Hoard modify the take; drops from THIS battle do not */
         const ownedIds = new Set(s.inventory.map((o) => o.id))
@@ -475,6 +497,14 @@ export const useGame = create<GameState>()(
         set((st) => ({ souls: st.souls + souls, claimedSeasons: [...st.claimedSeasons, id] }))
       },
 
+      /* The Ember Bank — trade souls for streak insurance, capped */
+      bankEmber: () => {
+        const s = get()
+        if (s.souls < EMBER_BANK_COST || s.emberBank >= EMBER_BANK_MAX) return false
+        set({ souls: s.souls - EMBER_BANK_COST, emberBank: s.emberBank + 1 })
+        return true
+      },
+
       /* The Daily Ember — claim today's small trial, once per day-key */
       claimDaily: (dayKey, souls) => {
         const s = get()
@@ -516,8 +546,32 @@ export const useGame = create<GameState>()(
       applyDemo: (seed) => set({ ...seed, demoActive: true }),
 
       /* the Curse Mark of Death — call on app load; drains 5% of souls
-         for every cursed day not yet paid, exactly once per day */
+         for every cursed day not yet paid, exactly once per day.
+         Before judgment, the Ember Bank spends itself: banked embers burn to
+         bridge any rest days between the last battle and today — but only when
+         the bank can cover the WHOLE gap (a half-bridged streak is still dead,
+         and the embers are better kept). */
       applyStatusEffects: () => {
+        {
+          const s = get()
+          if (s.battles.length > 0 && s.emberBank > 0) {
+            const last = dayNum(localDayKey(s.battles[0].date))
+            const today = dayNum(todayKey())
+            const burnsSet = new Set(s.emberBurns)
+            const missing: string[] = []
+            for (let d = last + 1; d <= today - 1; d++) {
+              const key = keyFromDayNum(d)
+              if (!burnsSet.has(key)) missing.push(key)
+            }
+            if (missing.length >= 1 && missing.length <= s.emberBank) {
+              set({
+                emberBank: s.emberBank - missing.length,
+                emberBurns: [...s.emberBurns, ...missing].slice(-60),
+              })
+            }
+          }
+        }
+
         const s = get()
         const st = statusEffects(s.battles)
         if (!st.cursed || s.souls <= 0 || s.battles.length === 0) return

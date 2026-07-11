@@ -69,15 +69,15 @@ Host the `dist/` folder on any static host (Netlify, Vercel, Cloudflare Pages, G
 
 ## Ship path 2 — The App Store (Capacitor)
 
-A PWA cannot be submitted to the App Store directly; wrap it with Capacitor:
+A PWA cannot be submitted to the App Store directly; wrap it with Capacitor. **The full walkthrough — including building from Windows via a cloud Mac, App Store Connect steps, and rejection-risk mitigations — lives in [`docs/PUBLISHING.md`](docs/PUBLISHING.md).** `capacitor.config.json` is already in the repo root (change `appId` before first submission — it's permanent). Short version:
 
 ```bash
-npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
-npx cap init Emberforge com.yourname.emberforge --web-dir dist
+npm install @capacitor/core
+npm install -D @capacitor/cli
 npm run build
-npx cap add ios          # requires a Mac with Xcode
+npx cap add ios          # creates the ios/ Xcode project
 npx cap sync
-npx cap open ios         # set signing team, build, archive
+npx cap open ios         # on a Mac: set signing team, build, archive
 ```
 
 App Store checklist:
