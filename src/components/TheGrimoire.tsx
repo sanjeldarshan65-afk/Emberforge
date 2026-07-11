@@ -46,7 +46,7 @@ export default function TheGrimoire({
   const [name, setName] = useState('')
   const [seq, setSeq] = useState<Movement[]>([])
 
-  const sealSpell = () => {
+  const sealPlan = () => {
     if (!name.trim() || seq.length === 0) return
     if (editingId) updateRoutine(editingId, name.trim(), seq)
     else saveRoutine(name.trim(), seq)
@@ -80,7 +80,7 @@ export default function TheGrimoire({
             <div className="max-w-2xl mx-auto px-5 pt-5">
               <div className="divider-ornate mb-4">The Grimoire</div>
 
-              {/* ---- inscribed spells ---- */}
+              {/* ---- inscribed battle plans ---- */}
               {routines.length === 0 && !creating && (
                 <p className="text-bone-dim italic text-center text-sm mb-4">
                   The grimoire lies empty. Inscribe thy first battle plan.
@@ -122,13 +122,13 @@ export default function TheGrimoire({
                 ))}
               </div>
 
-              {/* ---- inscribe a new spell ---- */}
+              {/* ---- inscribe a new battle plan ---- */}
               {creating ? (
                 <div className="panel p-4 space-y-3">
                   <input
                     type="text"
                     maxLength={32}
-                    placeholder="Name the spell — e.g. The Push Vanguard"
+                    placeholder="Name the plan — e.g. The Push Vanguard"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="input-dark min-h-12"
@@ -171,11 +171,11 @@ export default function TheGrimoire({
 
                   <div className="flex gap-2">
                     <button
-                      onClick={sealSpell}
+                      onClick={sealPlan}
                       disabled={!name.trim() || seq.length === 0}
                       className="btn-ember flex-1 min-h-12"
                     >
-                      {editingId ? 'Amend the Spell' : 'Seal the Spell'}
+                      {editingId ? 'Amend the Plan' : 'Seal the Plan'}
                     </button>
                     <button
                       onClick={() => {
@@ -192,7 +192,7 @@ export default function TheGrimoire({
                 </div>
               ) : (
                 <button onClick={() => setCreating(true)} className="btn-hollow w-full min-h-12">
-                  ✎ Inscribe a New Spell
+                  ✎ Inscribe a New Plan
                 </button>
               )}
 

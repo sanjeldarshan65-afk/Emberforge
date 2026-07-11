@@ -54,12 +54,14 @@ export default function StreakSheet({ open, onClose }: { open: boolean; onClose:
             {/* current streak */}
             <div className="text-center mb-5">
               <div
-                className={`text-4xl leading-none mb-1 ${
-                  streak > 0 ? 'text-ember-bright' : 'text-faded'
+                className={`flex justify-center mb-1 ${
+                  streak > 0 ? 'text-ember-bright drop-shadow-[0_0_10px_rgba(255,117,24,0.6)]' : 'text-faded'
                 } ${atRisk ? 'animate-flicker' : ''}`}
                 aria-hidden
               >
-                &#128293;
+                <svg viewBox="0 0 24 24" className="w-10 h-10" fill="currentColor">
+                  <path d="M12 2.6c1.1 3.3 4.6 5.3 4.6 9.7a4.6 4.6 0 0 1-9.2 0c0-2.5 1.5-3.8 2.1-6a3 3 0 0 0 1.9 1.6c1.1-1.4.9-3.6.6-5.3Z" />
+                </svg>
               </div>
               <div className="stat-souls text-3xl leading-none">{streak}</div>
               <div className="font-ui text-xs text-bone-dim mt-1">
