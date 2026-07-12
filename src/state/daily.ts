@@ -1,5 +1,5 @@
 import type { Battle, Ration, Macros } from './store'
-import { localDayKey } from './store'
+import { localDayKey } from './streak.ts'
 
 /* ================================================================
    THE DAILY EMBER — one small trial per day, drawn deterministically
