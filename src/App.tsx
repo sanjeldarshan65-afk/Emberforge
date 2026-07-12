@@ -295,7 +295,7 @@ function Hub() {
 
           <button
             onClick={() => setShowStreak(true)}
-            className={`inline-flex items-center gap-1 min-h-10 -my-2 ${
+            className={`inline-flex items-center justify-center gap-1 min-h-10 min-w-10 -my-2 -mx-1 px-1 ${
               streakAtRisk
                 ? 'text-estus'
                 : streak > 0

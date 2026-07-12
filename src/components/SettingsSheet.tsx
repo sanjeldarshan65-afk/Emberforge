@@ -32,13 +32,16 @@ const MACRO_FIELDS: { key: keyof Macros; label: string; unit: string }[] = [
   { key: 'fats', label: 'Fats', unit: 'g' },
 ]
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       role="switch"
       aria-checked={on}
+      aria-label={label}
       onClick={() => onChange(!on)}
-      className={`relative inline-block w-12 h-7 border shrink-0 transition-colors duration-300 ${
+      /* the ::after overlay stretches the tap target to ~64x44 while the
+         switch itself stays its visual 48x28 */
+      className={`relative inline-block w-12 h-7 border shrink-0 transition-colors duration-300 after:content-[''] after:absolute after:-inset-2 ${
         on ? 'border-ember bg-ember-deep/40 shadow-ember-glow' : 'border-ash bg-abyss'
       }`}
     >
@@ -281,15 +284,15 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
               </Row>
 
               <Row label="Auto rest timer" hint="kindle when a set is completed">
-                <Toggle on={settings.autoRestTimer} onChange={(v) => updateSettings({ autoRestTimer: v })} />
+                <Toggle label="Auto rest timer" on={settings.autoRestTimer} onChange={(v) => updateSettings({ autoRestTimer: v })} />
               </Row>
 
               <Row label="Haptic pulse" hint="tremble when the rest burns out">
-                <Toggle on={settings.vibration} onChange={(v) => updateSettings({ vibration: v })} />
+                <Toggle label="Haptic pulse" on={settings.vibration} onChange={(v) => updateSettings({ vibration: v })} />
               </Row>
 
               <Row label="Sound of the forge" hint="synthesized thuds, shings, and tolls">
-                <Toggle on={settings.sound} onChange={(v) => updateSettings({ sound: v })} />
+                <Toggle label="Sound of the forge" on={settings.sound} onChange={(v) => updateSettings({ sound: v })} />
               </Row>
 
               {/* ============ THE VESSEL ============ */}
@@ -298,7 +301,7 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
               </h3>
 
               <Row label="Show avatar" hint="the wireframe body in the Sanctum">
-                <Toggle on={settings.showAvatar} onChange={(v) => updateSettings({ showAvatar: v })} />
+                <Toggle label="Show avatar" on={settings.showAvatar} onChange={(v) => updateSettings({ showAvatar: v })} />
               </Row>
 
               <Row label="Retake the Rite" hint="re-answer the quiz; goals and plans re-forged">
@@ -333,7 +336,7 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
               </h3>
 
               <Row label="Hollowed Mode" hint="let the fire fade — ash, bone & cold spectral blue">
-                <Toggle on={settings.hollowed} onChange={(v) => updateSettings({ hollowed: v })} />
+                <Toggle label="Hollowed Mode" on={settings.hollowed} onChange={(v) => updateSettings({ hollowed: v })} />
               </Row>
 
               <Row
@@ -345,6 +348,7 @@ export default function SettingsSheet({ open, onClose }: { open: boolean; onClos
                 }
               >
                 <Toggle
+                  label="Ember Reminders"
                   on={settings.reminders && remindersPermitted()}
                   onChange={async (v) => {
                     if (!v) {

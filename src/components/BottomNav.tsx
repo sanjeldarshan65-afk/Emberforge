@@ -79,6 +79,9 @@ export default function BottomNav({
                 onChange(id)
               }}
               aria-current={active ? 'page' : undefined}
+              /* the visible text label only mounts while active — screen readers
+                 need a constant name for the other four */
+              aria-label={label}
               className="flex flex-col items-center justify-center min-h-16 gap-1 select-none"
             >
               <motion.span
